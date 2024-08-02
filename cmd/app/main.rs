@@ -1,153 +1,153 @@
-use std::{collections::HashMap, sync::{Arc, Mutex}};
-
-use actix_web::{error::ErrorNotFound, web, App, HttpResponse, HttpServer, Responder};
+use dotenv::dotenv;
+use std::env;
+use actix_web::{App, HttpServer, HttpResponse, Responder};
+use actix_web::web::{Data, Json, Path};
+use sea_orm::{Database, EntityTrait, Set, ActiveModelTrait, DatabaseConnection};
+use sea_orm::prelude::*;
 use serde::{Deserialize, Serialize};
-use uuid::{Uuid};
+use uuid::Uuid;
 
-#[actix_web::get("/greet")]
-async fn greet() -> impl Responder {
-    format!("Hello World")
-}
+use template::internal::entities::collection;
+use template::internal::entities::field;
 
-#[actix_web::get("/greet/{id}")]
-async fn greet_with_id(user_id: web::Path<u32>) -> impl Responder {
-    format!("Hello {user_id} !")
-}
-
-#[derive(Serialize,Deserialize)]
-struct User {
+#[derive(Debug, Serialize, Deserialize)]
+struct CreateCollection {
     name: String,
 }
 
-type UserDb = Arc<Mutex<HashMap<u32, User>>>;
-
-#[derive(Serialize)]
-struct CreateUserResponse {
-    id: u32,
-    name: String,
-}
-
-#[actix_web::post("/users/create")]
-async fn create_user(
-    user_data: web::Json<User>,
-    db: web::Data<UserDb>
-) -> impl Responder {
-    let mut db = db.lock().unwrap();
-    let new_id = db.keys().max().unwrap_or(&0) + 1;
-    let name = user_data.name.clone();
-
-    db.insert(new_id, user_data.into_inner());
-
-    HttpResponse::Created().json(CreateUserResponse {
-        id: new_id,
-        name,
-    })
-}
-
-#[actix_web::get("/users/{id}")]
-async fn get_user(
-    user_id: web::Path<u32>,
-    db: web::Data<UserDb>
-) -> impl Responder {
-    let user_id = user_id.into_inner();
-    let db = db.lock().unwrap();
-
-    match db.get(&user_id) {
-        Some(user_data) => Ok(HttpResponse::Ok().json(user_data)),
-        None => Err(ErrorNotFound("User not found"))
-    }
-}
-
-#[derive(Serialize,Deserialize,Clone)]
-struct Field {
-    id: Option<Uuid>,
+#[derive(Debug, Serialize, Deserialize)]
+struct CreateField {
     value_type: String,
     value_name: String,
 }
 
-#[derive(Serialize,Deserialize)]
-struct Collection {
-    id: Option<Uuid>,
-    name: String,
-    fields: Vec<Field>
-}
 
-type CollectionDb = Arc<Mutex<HashMap<Uuid, Collection>>>;
 
-#[derive(Serialize)]
-struct CreateCollectionResponse {
-    id: Uuid,
-    name: String,
-    field: Vec<Field>,
-}
-
-#[actix_web::post("/collections/create")]
-async fn create_collection(
-    collection_data: web::Json<Collection>,
-    db: web::Data<CollectionDb>
-) -> impl Responder {
-    let mut db = db.lock().unwrap();
-
-    let new_id = Uuid::new_v4();
-    let name = collection_data.name.clone();
-
-    let mut collection = collection_data.into_inner();
-    collection.id = Some(new_id);
-    for field in &mut collection.fields {
-        field.id = Some(Uuid::new_v4());
+#[actix_web::get("/collections")]
+async fn get_collections(db: Data<DatabaseConnection>) -> impl Responder {
+    match collection::Entity::find().find_with_related(field::Entity).all(db.get_ref()).await {
+        Ok(entries) => {
+            HttpResponse::Ok().json(entries)
+        }
+        Err(_) => {
+            HttpResponse::InternalServerError().finish()
+        }
     }
+}
 
-    let field = collection.fields.clone();
-    db.insert(new_id, collection);
 
-    HttpResponse::Created().json(CreateCollectionResponse {
-        id: new_id,
-        name,
-        field
-    })
+#[actix_web::post("/collections")]
+async fn create_collection(db: Data<DatabaseConnection>, item: Json<CreateCollection>) -> impl Responder {
+    let new_uuid = Uuid::new_v4();
+    let new_entry = collection::ActiveModel {
+        id: Set(new_uuid),
+        name: Set(item.name.clone()),
+    };
+
+    match new_entry.insert(db.get_ref()).await {
+        Ok(_) => {
+            match collection::Entity::find_by_id(new_uuid).one(db.get_ref()).await {
+                Ok(Some(entry)) => {
+                    HttpResponse::Ok().json(entry)
+                },
+                Ok(None) => {
+                    HttpResponse::NotFound().finish()
+                },
+                Err(_) => {
+                    HttpResponse::InternalServerError().finish()
+                }
+            }
+        },
+        Err(_) => {
+            HttpResponse::InternalServerError().finish()
+        }
+    }
 }
 
 #[actix_web::get("/collections/{id}")]
-async fn get_collection(
-    collection_id: web::Path<Uuid>,
-    db: web::Data<CollectionDb>
-) -> impl Responder {
-    let collection_id = collection_id.into_inner();
-    let db = db.lock().unwrap();
-
-    match db.get(&collection_id) {
-        Some(collection_data) => Ok(HttpResponse::Ok().json(collection_data)),
-        None => Err(ErrorNotFound("Collection not found"))
-            
+async fn get_collection(db: Data<DatabaseConnection>, id: Path<Uuid>) -> impl Responder {
+    match collection::Entity::find_by_id(*id).one(db.get_ref()).await {
+        Ok(Some(entry)) => {
+            HttpResponse::Ok().json(entry)
+        },
+        Ok(None) => {
+            HttpResponse::NotFound().finish()
+        },
+        Err(_) => {
+            HttpResponse::InternalServerError().finish()
+        }
     }
 }
 
+#[actix_web::get("/collections/{id}/fields")]
+async fn get_fields(db: Data<DatabaseConnection>, id: Path<Uuid>) -> impl Responder {
+    match field::Entity::find().filter(field::Column::CollectionId.eq(*id)).all(db.get_ref()).await {
+        Ok(entries) => {
+            HttpResponse::Ok().json(entries)
+        }
+        Err(_) => {
+            HttpResponse::InternalServerError().finish()
+        }
+    }
+}
+
+#[actix_web::post("/collections/{id}/fields")]
+async fn create_field(db: Data<DatabaseConnection>, id: Path<Uuid>, item: Json<CreateField>) -> impl Responder {
+    let new_uuid = Uuid::new_v4(); 
+
+    let new_entry = field::ActiveModel {
+        id: Set(new_uuid),
+        collection_id: Set(*id),
+        value_type: Set(item.value_type.clone()),
+        value_name: Set(item.value_name.clone()),
+    };
+    
+    match new_entry.insert(db.get_ref()).await {
+        Ok(_) => {
+            match field::Entity::find_by_id(new_uuid).one(db.get_ref()).await {
+                Ok(Some(entry)) => {
+                    HttpResponse::Ok().json(entry)
+                },
+                Ok(None) => {
+                    HttpResponse::NotFound().finish()
+                },
+                Err(_) => {
+                    HttpResponse::InternalServerError().finish()
+                }
+            }
+        },
+        Err(_) => {
+            HttpResponse::InternalServerError().finish()
+        }
+    }
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let port = 8080;
-    let address = "127.0.0.1";
-    println!("Starting server on {address}:{port}");
+    dotenv().ok();
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let database_port = env::var("DATABASE_PORT").expect("DATABASE_PORT must be set");
+    let database_user = env::var("DATABASE_USER").expect("DATABASE_USER must be set");
+    let database_password = env::var("DATABASE_PASSWORD").expect("DATABASE_PASSWORD must be set");
+    let database_name = env::var("DATABASE_NAME").expect("DATABASE_NAME must be set");
 
-    let user_db: UserDb = Arc::new(Mutex::new(HashMap::<u32, User>::new()));
-    let collection_db: CollectionDb = Arc::new(Mutex::new(HashMap::<Uuid, Collection>::new()));
+    let connection_string = format!(
+        "postgres://{}:{}@{}:{}/{}",
+        database_user, database_password, database_url, database_port, database_name
+    );
+
+    let db = Database::connect(&connection_string).await.unwrap();
 
     HttpServer::new(move || {
-        let app_data = web::Data::new(user_db.clone());
-        let collection_data = web::Data::new(collection_db.clone());
-
         App::new()
-            .app_data(app_data)
-            .app_data(collection_data)
-            .service(greet)
-            .service(greet_with_id)
-            .service(create_user)
-            .service(get_user)
+            .app_data(Data::new(db.clone()))
+            .service(get_collections)
             .service(create_collection)
-            .service(get_collection)
+            .service(get_fields)
+            .service(create_field)
     })
-    .bind((address, port))?
-    .workers(2)
+    .bind("127.0.0.1:8080")?
     .run()
     .await
 }
+
