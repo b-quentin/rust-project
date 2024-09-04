@@ -1,22 +1,38 @@
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [package]
 name = "template"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-dotenv = "0.15.0"
+# A powerful, pragmatic, and extremely fast web framework for Rust.
 actix-web = "4.0"
-async-graphql-actix-web = "5"
+# Actix runtime support.
 actix-rt = "2.5"
+# Integration for async-graphql with actix-web.
+async-graphql-actix-web = "5"
+# Asynchronous GraphQL implementation for Rust, with dynamic schema and UUID support.
+async-graphql = { version = "5.0", features = ["dynamic-schema", "uuid"] }
+# Allows the definition of async functions in traits.
+async-trait = "0.1.50"
+# Loads environment variables from a .env file.
+dotenv = "0.15.0"
+# Provides a logger configured via environment variables.
+env_logger = "0.10"
+# A lightweight logging facade for producing log messages.
+log = "0.4"
+# An ORM for Rust, with support for PostgreSQL and asynchronous runtime.
 sea-orm = { version = "0.12.15", features = ["sqlx-postgres", "runtime-tokio-native-tls", "macros", "with-json"] }
+# Macros for sea-orm to derive models easily.
 sea-orm-macros = "0.12.15"
-tokio = { version = "1", features = ["full"] }
+# Serialization framework for Rust.
 serde = { version = "1.0", features = ["derive"] }
+# JSON serialization and deserialization for Rust.
 serde_json = "1.0"
+# Asynchronous runtime for Rust with a focus on speed and concurrency.
+tokio = { version = "1", features = ["full"] }
+# Universally unique identifiers (UUIDs) for Rust, with serde support and version 4 UUIDs.
 uuid = { version = "1", features = ["serde", "v4"] }
-async-graphql= { version = "5.0", features = ["dynamic-schema", "uuid"] }
 
 [[bin]]
 name = "app"

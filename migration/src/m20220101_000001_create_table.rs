@@ -39,7 +39,7 @@ impl MigrationTrait for Migration {
                             .not_null(),
                     )
                     .col(ColumnDef::new(Fields::ValueType).string().not_null())
-                    .col(ColumnDef::new(Fields::ValueName).string().not_null())
+                    .col(ColumnDef::new(Fields::Name).string().not_null())
                     .foreign_key(
                         ForeignKey::create()
                             .name("fk-field-collection_id")
@@ -74,8 +74,8 @@ enum Fields {
     Table,
     Id,
     CollectionId,
+    Name,
     ValueType,
-    ValueName,
 }
 
 
