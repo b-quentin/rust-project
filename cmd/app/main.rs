@@ -3,7 +3,7 @@ use actix_web::{web::Data, App, HttpServer};
 use async_graphql::{Schema, EmptySubscription};
 use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse};
 use dotenv::dotenv;
-use log::info;
+use log::{debug, error, info};
 use sea_orm::Database;
 use std::env;
 use template::internal::api::user;
@@ -25,9 +25,19 @@ async fn main() -> std::io::Result<()> {
         database_user, database_password, database_url, database_port, database_name
     );
 
-    info!("Connecting to database with: {}", connection_string);
+    info!("Connecting to database...");
+    debug!("With this connection string: {}", connection_string);
 
-    let db = Database::connect(&connection_string).await.unwrap();
+    let db = match Database::connect(&connection_string).await {
+        Ok(db) => {
+            info!("Connected to the database successfully");
+            db
+        }
+        Err(e) => {
+            error!("Failed to connect to the database: {:?}", e);
+            return Err(std::io::Error::new(std::io::ErrorKind::Other, "Database connection failed"));
+        }
+    };
 
     let schema = Schema::build(
         user::controllers::graphql::QueryRoot,
