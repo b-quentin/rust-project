@@ -7,16 +7,16 @@ use crate::internal::api::user::services::user::{UserService, UserServiceImpl};
 
 #[derive(Serialize, Deserialize)]
 pub struct CreateUserInput {
-    username: String,
-    email: String,
-    password: String,
+    pub username: String,
+    pub email: String,
+    pub password: String,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct UpdateUserInput {
-    username: Option<String>,
-    email: Option<String>,
-    password: Option<String>,
+    pub username: Option<String>,
+    pub email: Option<String>,
+    pub password: Option<String>,
 }
 
 pub async fn get_user(db: web::Data<DatabaseConnection>, id: web::Path<Uuid>) -> impl Responder {
