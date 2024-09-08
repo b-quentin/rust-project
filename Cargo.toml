@@ -37,11 +37,3 @@ uuid = { version = "1", features = ["serde", "v4"] }
 [[bin]]
 name = "app"
 path = "cmd/app/main.rs"
-
-[[bin]]
-name = "cli"
-path = "cmd/cli/main.rs"
-
-[[bin]]
-name = "test"
-path = "cmd/test/main.rs"
