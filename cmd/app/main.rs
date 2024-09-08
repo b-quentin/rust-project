@@ -6,6 +6,7 @@ use dotenv::dotenv;
 use log::{debug, error, info};
 use sea_orm::Database;
 use std::env;
+use std::sync::Arc;
 use template::internal::api::user;
 use template::internal::api::user::routes::init_user_routes;
 
@@ -31,7 +32,7 @@ async fn main() -> std::io::Result<()> {
     let db = match Database::connect(&connection_string).await {
         Ok(db) => {
             info!("Connected to the database successfully");
-            db
+            Arc::new(db) 
         }
         Err(e) => {
             error!("Failed to connect to the database: {:?}", e);
@@ -44,7 +45,7 @@ async fn main() -> std::io::Result<()> {
         user::controllers::graphql::MutationRoot,
         EmptySubscription,
     )
-    .data(db.clone())
+    .data(Arc::clone(&db))
     .finish();
 
     info!("Server is running on http://127.0.0.1:8080");
@@ -53,7 +54,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(Logger::default())
             .app_data(Data::new(schema.clone()))
-            .app_data(Data::new(db.clone()))
+            .app_data(Data::new(Arc::clone(&db)))
             .service(actix_web::web::resource("/graphql").guard(actix_web::guard::Post()).to(graphql_handler))
             .service(actix_web::web::resource("/graphql").guard(actix_web::guard::Get()).to(graphql_playground))
             .configure(init_user_routes)
