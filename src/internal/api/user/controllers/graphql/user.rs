@@ -12,20 +12,21 @@ struct User {
 }
 
 #[derive(InputObject)]
-struct CreateUserInput {
-    username: String,
-    email: String,
-    password: String,
+pub struct CreateUserInput {
+    pub username: String,
+    pub email: String,
+    pub password: String,
 }
 
 #[derive(InputObject)]
-struct UpdateUserInput {
-    id: Uuid,
-    username: Option<String>,
-    email: Option<String>,
-    password: Option<String>,
+pub struct UpdateUserInput {
+    pub id: Uuid,
+    pub username: Option<String>,
+    pub email: Option<String>,
+    pub password: Option<String>,
 }
 
+#[derive(Default)]
 pub struct QueryRoot;
 
 #[Object]
@@ -53,6 +54,7 @@ impl QueryRoot {
     }
 }
 
+#[derive(Default)]
 pub struct MutationRoot;
 
 #[Object]
