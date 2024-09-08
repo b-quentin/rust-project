@@ -1,5 +1,7 @@
-/target
 /.idea
-/target
-/migration/target/
-/.env
+/.plandex
+/prompts
+/docker/.env
+/backend/.env
+/backend/target
+/backend/migration/target/

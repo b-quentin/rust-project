@@ -113,4 +113,3 @@ fn hash_password(password: String) -> String {
     // Implement password hashing here (e.g., using bcrypt)
     password // Placeholder, replace with actual hash
 }
-
