@@ -22,7 +22,7 @@ env_logger = "0.10"
 # A lightweight logging facade for producing log messages.
 log = "0.4"
 # An ORM for Rust, with support for PostgreSQL and asynchronous runtime.
-sea-orm = { version = "0.12.15", features = ["sqlx-postgres", "runtime-tokio-native-tls", "macros", "with-json"] }
+sea-orm = { version = "0.12.15", features = ["sqlx-postgres", "runtime-tokio-native-tls", "macros", "with-json", "mock"] }
 # Macros for sea-orm to derive models easily.
 sea-orm-macros = "0.12.15"
 # Serialization framework for Rust.
