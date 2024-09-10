@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use async_graphql::{
     EmptyMutation,
     EmptySubscription,
@@ -26,6 +28,8 @@ async fn test_user_found() {
             }],
         ])
         .into_connection();
+
+    let db = Arc::new(db);
 
     // Create a schema with the mock database in context
     let schema = Schema::build(QueryRoot::default(), EmptyMutation, EmptySubscription)
@@ -61,6 +65,8 @@ async fn test_user_not_found() {
         .append_query_results::<user::Model, Vec<user::Model>, _>([vec![]]) // Correctly specify the type for empty results
         .into_connection();
 
+    let db = Arc::new(db);
+
     // Create a schema with the mock database in context
     let schema = Schema::build(QueryRoot::default(), EmptyMutation, EmptySubscription)
         .data(db)
@@ -93,6 +99,8 @@ async fn test_user_db_error() {
         .append_query_errors([DbErr::Custom("Database error".into())])
         .into_connection();
 
+    let db = Arc::new(db);
+
     // Create a schema with the mock database in context
     let schema = Schema::build(QueryRoot::default(), EmptyMutation, EmptySubscription)
         .data(db)
@@ -116,6 +124,139 @@ async fn test_user_db_error() {
 }
 
 #[tokio::test]
+async fn test_users_found() {
+    // Mock UUIDs for testing
+    let uuid1 = Uuid::parse_str("51c84da0-6fbe-4db2-81fe-385a38d29353").unwrap();
+    let uuid2 = Uuid::parse_str("f30c1f8f-55c8-4ad5-b3e8-4f4530a73a58").unwrap();
+
+    // Mock the database with multiple users
+    let db = MockDatabase::new(DatabaseBackend::Postgres)
+        .append_query_results([vec![
+            user::Model {
+                id: uuid1,
+                username: "test_user1".to_owned(),
+                email: "test1@example.com".to_owned(),
+                password: "hashed_password1".to_owned(),
+            },
+            user::Model {
+                id: uuid2,
+                username: "test_user2".to_owned(),
+                email: "test2@example.com".to_owned(),
+                password: "hashed_password2".to_owned(),
+            },
+        ]])
+        .into_connection();
+
+    let db = Arc::new(db);
+
+    // Create a schema with the mock database in context
+    let schema = Schema::build(QueryRoot::default(), EmptyMutation, EmptySubscription)
+        .data(db)
+        .finish();
+
+    // Execute the query to fetch all users
+    let query = format!(r#"
+        {{
+            users {{
+                id
+                username
+                email
+            }}
+        }}
+    "#);
+
+    let response = schema.execute(&query).await;
+
+    // Assert the response
+    assert!(response.errors.is_empty(), "Unexpected errors: {:?}", response.errors);
+    let data = response.data.into_json().unwrap();
+
+    // Assertions for multiple users
+    assert_eq!(data["users"][0]["id"], uuid1.to_string());
+    assert_eq!(data["users"][0]["username"], "test_user1");
+    assert_eq!(data["users"][0]["email"], "test1@example.com");
+
+    assert_eq!(data["users"][1]["id"], uuid2.to_string());
+    assert_eq!(data["users"][1]["username"], "test_user2");
+    assert_eq!(data["users"][1]["email"], "test2@example.com");
+}
+
+#[tokio::test]
+async fn test_users_not_found() {
+    // Mock the database to simulate no users found
+    let db = MockDatabase::new(DatabaseBackend::Postgres)
+        .append_query_results::<user::Model, Vec<user::Model>, _>([vec![]]) // Correctly specify the type for empty results
+        .into_connection();
+
+    let db = Arc::new(db);
+
+    // Create a schema with the mock database in context
+    let schema = Schema::build(QueryRoot::default(), EmptyMutation, EmptySubscription)
+        .data(db)
+        .finish();
+
+    // Use format! to dynamically create the query
+    let query = format!(r#"
+        {{
+            users {{
+                id
+                username
+                email
+            }}
+        }}
+    "#);
+
+    let response = schema.execute(&query).await;
+
+    // Assert the response
+    assert!(response.errors.is_empty(), "Unexpected errors: {:?}", response.errors);
+    let data = response.data.into_json().unwrap();
+
+    // Assertions to confirm no users are returned
+    assert!(data["users"].is_array());
+    assert!(data["users"].as_array().unwrap().is_empty(), "Expected no users but found some.");
+}
+
+#[tokio::test]
+async fn test_users_db_error() {
+    // Mock the database to simulate a database error
+    let db = MockDatabase::new(DatabaseBackend::Postgres)
+        .append_query_errors([DbErr::Custom("Simulated database connection error".into())]) // Simulate a DB error
+        .into_connection();
+
+    let db = Arc::new(db);
+
+    // Create a schema with the mock database in context
+    let schema = Schema::build(QueryRoot::default(), EmptyMutation, EmptySubscription)
+        .data(db)
+        .finish();
+
+    // Use format! to dynamically create the query
+    let query = format!(r#"
+        {{
+            users {{
+                id
+                username
+                email
+            }}
+        }}
+    "#);
+
+    let response = schema.execute(&query).await;
+
+    // Assert the response for expected errors
+    assert!(!response.errors.is_empty(), "Expected errors but found none.");
+    let errors = response.errors;
+
+    // Assertions to confirm the error message
+    assert!(
+        errors.iter().any(|e| e.message.contains("Failed to fetch users with error")),
+        "Expected database connection error but found: {:?}",
+        errors
+    );
+}
+
+#[tokio::test]
 async fn test_create_user_success() {
     // Mock input for creating a user
     let input = CreateUserInput {
@@ -129,17 +270,23 @@ async fn test_create_user_success() {
 
     // Mock the database to simulate successful user creation
     let db = MockDatabase::new(DatabaseBackend::Postgres)
+        // First, simulate the email check which should return no users (empty vector)
+        .append_query_results::<user::Model, Vec<user::Model>, _>([vec![]]) // No prior users in the system
+        // Then simulate the user creation process
+        .append_exec_results([MockExecResult {
+            rows_affected: 1, // Simulate successful insertion
+            last_insert_id: 0, // Not used but kept for structure
+        }])
+        // Simulate the returned user after creation
         .append_query_results([vec![user::Model {
             id: generated_uuid,
             username: input.username.clone(),
             email: input.email.clone(),
             password: "hashed_password".to_owned(),
-        }]]) // Correctly simulate the returned user after creation
-        .append_exec_results([MockExecResult {
-            rows_affected: 1, // Simulate successful insertion
-            last_insert_id: 0, // Not used but kept for structure
-        }])
+        }]])
         .into_connection();
+
+    let db = Arc::new(db);
 
     // Create a schema with the mock database in context
     let schema = Schema::build(QueryRoot::default(), MutationRoot::default(), EmptySubscription)
@@ -189,6 +336,8 @@ async fn test_create_user_db_error() {
         .append_query_results::<user::Model, Vec<user::Model>, _>([vec![]]) // No prior users in the system
         .append_exec_errors([DbErr::Custom("Insertion error".into())]) // Simulate a database error
         .into_connection();
+
+    let db = Arc::new(db);
 
     // Create a schema with the mock database in context
     let schema = Schema::build(QueryRoot::default(), MutationRoot::default(), EmptySubscription)
@@ -253,6 +402,8 @@ async fn test_update_user_success() {
         }]]) // Simulate returning the updated user
         .into_connection();
 
+    let db = Arc::new(db);
+
     // Create a schema with the mock database in context
     let schema = Schema::build(QueryRoot::default(), MutationRoot, EmptySubscription)
         .data(db)
@@ -299,6 +450,8 @@ async fn test_update_user_not_found() {
     let db = MockDatabase::new(DatabaseBackend::Postgres)
         .append_query_results::<user::Model, Vec<user::Model>, _>([vec![]]) // Correctly specify the type for empty results
         .into_connection();
+
+    let db = Arc::new(db);
 
     // Create a schema with the mock database in context
     let schema = Schema::build(QueryRoot::default(), MutationRoot, EmptySubscription)
@@ -350,6 +503,8 @@ async fn test_update_user_db_error() {
         .append_exec_errors([DbErr::Custom("Update error".into())]) // Simulate an error during update
         .into_connection();
 
+    let db = Arc::new(db);
+
     // Create a schema with the mock database in context
     let schema = Schema::build(QueryRoot::default(), MutationRoot, EmptySubscription)
         .data(db)
@@ -389,6 +544,8 @@ async fn test_delete_user_success() {
         }])
         .into_connection();
 
+    let db = Arc::new(db);
+
     // Create a schema with the mock database in context
     let schema = Schema::build(QueryRoot::default(), MutationRoot::default(), EmptySubscription)
         .data(db)
@@ -426,6 +583,8 @@ async fn test_delete_user_not_found() {
         }])
         .into_connection();
 
+    let db = Arc::new(db);
+
     // Create a schema with the mock database in context
     let schema = Schema::build(QueryRoot::default(), MutationRoot::default(), EmptySubscription)
         .data(db)
@@ -459,6 +618,8 @@ async fn test_delete_user_db_error() {
     let db = MockDatabase::new(DatabaseBackend::Postgres)
         .append_exec_errors([DbErr::Custom("Deletion error".into())]) // Simulate a database error
         .into_connection();
+
+    let db = Arc::new(db);
 
     // Create a schema with the mock database in context
     let schema = Schema::build(QueryRoot::default(), MutationRoot::default(), EmptySubscription)

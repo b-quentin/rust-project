@@ -134,6 +134,139 @@ async fn test_get_user_db_error() -> Result<(), DbErr> {
 }
 
 #[tokio::test]
+async fn test_get_all_users_success() {
+    // Mock UUIDs for testing
+    let uuid1 = Uuid::parse_str("51c84da0-6fbe-4db2-81fe-385a38d29353").unwrap();
+    let uuid2 = Uuid::parse_str("f30c1f8f-55c8-4ad5-b3e8-4f4530a73a58").unwrap();
+
+    // Mock the database with multiple users
+    let db = MockDatabase::new(DatabaseBackend::Postgres)
+        .append_query_results([vec![
+            user::Model {
+                id: uuid1,
+                username: "test_user1".to_owned(),
+                email: "test1@example.com".to_owned(),
+                password: "hashed_password1".to_owned(),
+            },
+            user::Model {
+                id: uuid2,
+                username: "test_user2".to_owned(),
+                email: "test2@example.com".to_owned(),
+                password: "hashed_password2".to_owned(),
+            },
+        ]])
+        .into_connection();
+
+    // Call the function to be tested
+    let result = UserServiceImpl::get_all_users(&db).await;
+
+    // Assert the result
+    assert!(result.is_ok(), "Expected Ok but got Err: {:?}", result);
+    let users = result.unwrap();
+    assert_eq!(users.len(), 2, "Expected 2 users but found {}", users.len());
+
+    // Assertions for the first user
+    assert_eq!(users[0].id, uuid1);
+    assert_eq!(users[0].username, "test_user1");
+    assert_eq!(users[0].email, "test1@example.com");
+
+    // Assertions for the second user
+    assert_eq!(users[1].id, uuid2);
+    assert_eq!(users[1].username, "test_user2");
+    assert_eq!(users[1].email, "test2@example.com");
+}
+
+#[tokio::test]
+async fn test_get_all_users_db_error() {
+    // Mock the database to simulate a database error
+    let db = MockDatabase::new(DatabaseBackend::Postgres)
+        .append_query_errors([DbErr::Custom("Simulated database error".into())]) // Simulate a DB error
+        .into_connection();
+
+    // Call the function to be tested
+    let result = UserServiceImpl::get_all_users(&db).await;
+
+    // Assert the result
+    assert!(result.is_err(), "Expected Err but got Ok: {:?}", result);
+    let error = result.err().unwrap();
+
+    // Assertions to confirm the error type and message
+    match error {
+        DbErr::Custom(msg) => assert_eq!(msg, "Simulated database error"),
+        _ => panic!("Expected Custom error but got {:?}", error),
+    }
+}
+
+#[tokio::test]
+async fn test_find_user_by_email_success() {
+    // Mock UUID for testing
+    let uuid = Uuid::parse_str("51c84da0-6fbe-4db2-81fe-385a38d29353").unwrap();
+
+    // Mock the database with a user matching the email
+    let db = MockDatabase::new(DatabaseBackend::Postgres)
+        .append_query_results([vec![user::Model {
+            id: uuid,
+            username: "test_user".to_owned(),
+            email: "test@example.com".to_owned(),
+            password: "hashed_password".to_owned(),
+        }]])
+        .into_connection();
+
+    // Call the function to be tested
+    let result = UserServiceImpl::find_user_by_email(&db, "test@example.com".to_string()).await;
+
+    // Assert the result
+    assert!(result.is_ok(), "Expected Ok but got Err: {:?}", result);
+    let user = result.unwrap();
+
+    // Assertions for the found user
+    assert!(user.is_some(), "Expected Some(user) but got None");
+    let user = user.unwrap();
+    assert_eq!(user.id, uuid);
+    assert_eq!(user.username, "test_user");
+    assert_eq!(user.email, "test@example.com");
+}
+
+#[tokio::test]
+async fn test_find_user_by_email_not_found() {
+    // Mock the database to simulate no user found
+    let db = MockDatabase::new(DatabaseBackend::Postgres)
+        .append_query_results::<user::Model, Vec<user::Model>, _>([vec![]]) // Correctly specify the type for empty results
+        .into_connection();
+
+    // Call the function to be tested
+    let result = UserServiceImpl::find_user_by_email(&db, "nonexistent@example.com".to_string()).await;
+
+    // Assert the result
+    assert!(result.is_ok(), "Expected Ok but got Err: {:?}", result);
+    let user = result.unwrap();
+
+    // Assertions to confirm no user is returned
+    assert!(user.is_none(), "Expected None but got Some(user)");
+}
+
+#[tokio::test]
+async fn test_find_user_by_email_db_error() {
+    // Mock the database to simulate a database error
+    let db = MockDatabase::new(DatabaseBackend::Postgres)
+        .append_query_errors([DbErr::Custom("Simulated database error".into())]) // Simulate a DB error
+        .into_connection();
+
+    // Call the function to be tested
+    let result = UserServiceImpl::find_user_by_email(&db, "error@example.com".to_string()).await;
+
+    // Assert the result
+    assert!(result.is_err(), "Expected Err but got Ok: {:?}", result);
+    let error = result.err().unwrap();
+
+    // Assertions to confirm the error type and message
+    match error {
+        DbErr::Custom(msg) => assert_eq!(msg, "Simulated database error"),
+        _ => panic!("Expected Custom error but got {:?}", error),
+    }
+}
+
+#[tokio::test]
 async fn test_update_user_not_found() -> Result<(), DbErr> {
     // Fixed UUID for testing
     let fixed_uuid = Uuid::parse_str("51c84da0-6fbe-4db2-81fe-385a38d29353").unwrap();

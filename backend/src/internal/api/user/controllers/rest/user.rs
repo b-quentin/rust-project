@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use actix_web::{web, HttpResponse, Responder};
 use log::{error, trace};
 use sea_orm::DatabaseConnection;
@@ -19,11 +21,11 @@ pub struct UpdateUserInput {
     pub password: Option<String>,
 }
 
-pub async fn get_user(db: web::Data<DatabaseConnection>, id: web::Path<Uuid>) -> impl Responder {
+pub async fn get_user(db: web::Data<Arc<DatabaseConnection>>, id: web::Path<Uuid>) -> impl Responder {
     let user_id = id.into_inner();
     trace!("Attempting to fetch user with id: {}", user_id);
 
-    match UserServiceImpl::get_user(db.get_ref(), user_id).await {
+    match UserServiceImpl::get_user(db.get_ref().as_ref(), user_id).await {
         Ok(Some(user)) => {
             trace!("User found: {:?}", user);
             HttpResponse::Ok().json(user)
@@ -39,11 +41,11 @@ pub async fn get_user(db: web::Data<DatabaseConnection>, id: web::Path<Uuid>) ->
     }
 }
 
-pub async fn create_user(db: web::Data<DatabaseConnection>, user_data: web::Json<CreateUserInput>) -> impl Responder {
+pub async fn create_user(db: web::Data<Arc<DatabaseConnection>>, user_data: web::Json<CreateUserInput>) -> impl Responder {
     let user_data = user_data.into_inner();
     trace!("Attempting to create user with username: '{}', email: '{}'", user_data.username, user_data.email);
 
-    match UserServiceImpl::create_user(db.get_ref(), user_data.username.clone(), user_data.email.clone(), user_data.password).await {
+    match UserServiceImpl::create_user(db.get_ref().as_ref(), user_data.username.clone(), user_data.email.clone(), user_data.password).await {
         Ok(user) => {
             trace!("User created successfully: {:?}", user);
             HttpResponse::Created().json(user)
@@ -55,12 +57,12 @@ pub async fn create_user(db: web::Data<DatabaseConnection>, user_data: web::Json
     }
 }
 
-pub async fn update_user(db: web::Data<DatabaseConnection>, id: web::Path<Uuid>, user_data: web::Json<UpdateUserInput>) -> impl Responder {
+pub async fn update_user(db: web::Data<Arc<DatabaseConnection>>, id: web::Path<Uuid>, user_data: web::Json<UpdateUserInput>) -> impl Responder {
     let user_id = id.into_inner();
     let user_data = user_data.into_inner();
     trace!("Attempting to update user with id: '{}', username: '{:?}', email: '{:?}'", user_id, user_data.username, user_data.email);
 
-    match UserServiceImpl::update_user(db.get_ref(), user_id, user_data.username.clone(), user_data.email.clone(), user_data.password).await {
+    match UserServiceImpl::update_user(db.get_ref().as_ref(), user_id, user_data.username.clone(), user_data.email.clone(), user_data.password).await {
         Ok(user) => {
             trace!("User updated successfully: {:?}", user);
             HttpResponse::Ok().json(user)
@@ -72,11 +74,11 @@ pub async fn update_user(db: web::Data<DatabaseConnection>, id: web::Path<Uuid>,
     }
 }
 
-pub async fn delete_user(db: web::Data<DatabaseConnection>, id: web::Path<Uuid>) -> impl Responder {
+pub async fn delete_user(db: web::Data<Arc<DatabaseConnection>>, id: web::Path<Uuid>) -> impl Responder {
     let user_id = id.into_inner();
     trace!("Attempting to delete user with id: {}", user_id);
 
-    match UserServiceImpl::delete_user(db.get_ref(), user_id).await {
+    match UserServiceImpl::delete_user(db.get_ref().as_ref(), user_id).await {
         Ok(true) => {
             trace!("User with id {} deleted successfully", user_id);
             HttpResponse::Ok().finish()

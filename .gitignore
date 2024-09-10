@@ -1,7 +1,25 @@
+# root
 /.idea
 /.plandex
 /prompts
+
+# docker
 /docker/.env
+
+# backend
 /backend/.env
 /backend/target
 /backend/migration/target/
+
+# frontend
+/frontend/.DS_Store
+/frontend/node_modules
+/frontend/build
+/frontend/.svelte-kit
+/frontend/package
+/frontend/.vscode
+/frontend/.env
+/frontend/.env.*
+!/frontend/.env.dist
+/frontend/vite.config.js.timestamp-*
+/frontend/vite.config.ts.timestamp-*

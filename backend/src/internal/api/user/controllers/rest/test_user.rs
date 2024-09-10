@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use actix_web::http::StatusCode;
 use actix_web::{test, web, App};
 use sea_orm::{DatabaseBackend, DbErr, MockDatabase, MockExecResult};
@@ -23,6 +25,8 @@ async fn test_get_user_success() {
             }],
         ])
         .into_connection();
+
+    let db = Arc::new(db);
 
     // Set up the Actix Web app with the mock database
     let app = test::init_service(
@@ -57,6 +61,8 @@ async fn test_get_user_not_found() {
         .append_query_results::<user::Model, Vec<user::Model>, _>([vec![]]) // Simulate empty result
         .into_connection();
 
+    let db = Arc::new(db);
+
     // Set up the Actix Web app with the mock database
     let app = test::init_service(
         App::new()
@@ -64,6 +70,7 @@ async fn test_get_user_not_found() {
             .route("/user/{id}", web::get().to(get_user)),
     )
     .await;
+
 
     // Execute a test request to the get_user endpoint
     let req = test::TestRequest::get()
@@ -85,6 +92,8 @@ async fn test_get_user_db_error() {
     let db = MockDatabase::new(DatabaseBackend::Postgres)
         .append_query_errors([DbErr::Custom("Database error".into())]) // Simulate a database error
         .into_connection();
+
+    let db = Arc::new(db);
 
     // Set up the Actix Web app with the mock database
     let app = test::init_service(
@@ -131,6 +140,8 @@ async fn test_create_user_success() {
         }]]) // Simulate returning the newly created user
         .into_connection();
 
+    let db = Arc::new(db);
+
     // Set up the Actix Web app with the mock database
     let app = test::init_service(
         App::new()
@@ -168,6 +179,8 @@ async fn test_create_user_db_error() {
     let db = MockDatabase::new(DatabaseBackend::Postgres)
         .append_exec_errors([DbErr::Custom("Insertion error".into())]) // Simulate a database error
         .into_connection();
+
+    let db = Arc::new(db);
 
     // Set up the Actix Web app with the mock database
     let app = test::init_service(
@@ -221,6 +234,8 @@ async fn test_update_user_success() {
         }]]) // Simulate returning the updated user
         .into_connection();
 
+    let db = Arc::new(db);
+
     // Set up the Actix Web app with the mock database
     let app = test::init_service(
         App::new()
@@ -261,6 +276,8 @@ async fn test_update_user_not_found() {
     let db = MockDatabase::new(DatabaseBackend::Postgres)
         .append_query_results::<user::Model, Vec<user::Model>, _>([vec![]]) // Simulate empty result
         .into_connection();
+
+    let db = Arc::new(db);
 
     // Set up the Actix Web app with the mock database
     let app = test::init_service(
@@ -305,6 +322,8 @@ async fn test_update_user_db_error() {
         .append_exec_errors([DbErr::Custom("Update error".into())]) // Simulate an error during update
         .into_connection();
 
+    let db = Arc::new(db);
+
     // Set up the Actix Web app with the mock database
     let app = test::init_service(
         App::new()
@@ -338,6 +357,8 @@ async fn test_delete_user_success() {
         }])
         .into_connection();
 
+    let db = Arc::new(db);
+
     // Set up the Actix Web app with the mock database
     let app = test::init_service(
         App::new()
@@ -370,6 +391,8 @@ async fn test_delete_user_not_found() {
         }])
         .into_connection();
 
+    let db = Arc::new(db);
+
     // Set up the Actix Web app with the mock database
     let app = test::init_service(
         App::new()
@@ -398,6 +421,8 @@ async fn test_delete_user_db_error() {
     let db = MockDatabase::new(DatabaseBackend::Postgres)
         .append_exec_errors([DbErr::Custom("Deletion error".into())]) // Simulate a database error
         .into_connection();
+
+    let db = Arc::new(db);
 
     // Set up the Actix Web app with the mock database
     let app = test::init_service(

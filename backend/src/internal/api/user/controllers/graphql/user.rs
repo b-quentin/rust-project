@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use async_graphql::{Context, Error, Object, SimpleObject, InputObject};
 use sea_orm::DatabaseConnection;
 use uuid::Uuid;
@@ -33,9 +34,14 @@ pub struct QueryRoot;
 impl QueryRoot {
     async fn user(&self, ctx: &Context<'_>, id: Uuid) -> async_graphql::Result<Option<User>> {
         trace!("Fetching user with id: {}", id);
-        let db = ctx.data::<DatabaseConnection>()?;
+        let db = match ctx.data::<Arc<DatabaseConnection>>() {
+            Ok(db) => db,
+            Err(e) => {
+                return Err(Error::new(format!("Failed to access database connection in context with error {:?}", e)));
+            }
+        };
 
-        match UserServiceImpl::get_user(db, id).await {
+        match UserServiceImpl::get_user(db.as_ref(), id).await {
             Ok(Some(u)) => {
                 trace!("User found: {:?}", u);
                 Ok(Some(User {
@@ -52,6 +58,29 @@ impl QueryRoot {
             }
         }
     }
+    async fn users(&self, ctx: &Context<'_>) -> async_graphql::Result<Vec<User>> {
+        trace!("Fetching all users");
+        let db = match ctx.data::<Arc<DatabaseConnection>>() {
+            Ok(db) => db,
+            Err(e) => {
+                return Err(Error::new(format!("Failed to access database connection in context with error {:?}", e)));
+            }
+        };
+
+        match UserServiceImpl::get_all_users(db.as_ref()).await {
+            Ok(users) => {
+                trace!("Users found: {:?}", users);
+                Ok(users.into_iter().map(|u| User {
+                    id: u.id,
+                    username: u.username,
+                    email: u.email,
+                }).collect())
+            },
+            Err(e) => {
+                Err(Error::new(format!("Failed to fetch users with error {}", e)))
+            }
+        }
+    }
 }
 
 #[derive(Default)]
@@ -61,9 +90,27 @@ pub struct MutationRoot;
 impl MutationRoot {
     async fn create_user(&self, ctx: &Context<'_>, input: CreateUserInput) -> async_graphql::Result<User> {
         trace!("Creating user with username: '{}', email: '{}'", input.username, input.email);
-        let db = ctx.data::<DatabaseConnection>()?;
+        let db = match ctx.data::<Arc<DatabaseConnection>>() {
+            Ok(db) => db,
+            Err(e) => {
+                return Err(Error::new(format!("Failed to access database connection in context with error {:?}", e)));
+            }
+        };
 
-        match UserServiceImpl::create_user(db, input.username.clone(), input.email.clone(), input.password).await {
+        // Check if the email already exists in the database
+        match UserServiceImpl::find_user_by_email(db.as_ref(), input.email.clone()).await {
+            Ok(Some(_)) => {
+                return Err(Error::new(format!("Email '{}' is already in use.", input.email)));
+            },
+            Ok(None) => {
+                // Email does not exist, proceed with user creation
+            },
+            Err(e) => {
+                return Err(Error::new(format!("Failed to check email uniqueness: {}", e)));
+            }
+        }
+
+        match UserServiceImpl::create_user(db.as_ref(), input.username.clone(), input.email.clone(), input.password).await {
             Ok(user) => {
                 trace!("User created successfully: {:?}", user);
                 Ok(User {
@@ -80,9 +127,14 @@ impl MutationRoot {
 
     async fn update_user(&self, ctx: &Context<'_>, input: UpdateUserInput) -> async_graphql::Result<User> {
         trace!("Updating user with id: '{}', username: '{:?}', email: '{:?}'", input.id, input.username, input.email);
-        let db = ctx.data::<DatabaseConnection>()?;
+        let db = match ctx.data::<Arc<DatabaseConnection>>() {
+            Ok(db) => db,
+            Err(e) => {
+                return Err(Error::new(format!("Failed to access database connection in context with error {:?}", e)));
+            }
+        };
 
-        match UserServiceImpl::update_user(db, input.id, input.username.clone(), input.email.clone(), input.password).await {
+        match UserServiceImpl::update_user(db.as_ref(), input.id, input.username.clone(), input.email.clone(), input.password).await {
             Ok(user) => {
                 trace!("User updated successfully: {:?}", user);
                 Ok(User {
@@ -99,9 +151,14 @@ impl MutationRoot {
 
     async fn delete_user(&self, ctx: &Context<'_>, id: Uuid) -> async_graphql::Result<bool> {
         trace!("Deleting user with id: {}", id);
-        let db = ctx.data::<DatabaseConnection>()?;
+        let db = match ctx.data::<Arc<DatabaseConnection>>() {
+            Ok(db) => db,
+            Err(e) => {
+                return Err(Error::new(format!("Failed to access database connection in context with error {:?}", e)));
+            }
+        };
 
-        match UserServiceImpl::delete_user(db, id).await {
+        match UserServiceImpl::delete_user(db.as_ref(), id).await {
             Ok(result) => {
                 trace!("User with id {} deleted successfully", id);
                 Ok(result)

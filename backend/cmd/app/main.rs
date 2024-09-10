@@ -1,3 +1,5 @@
+use actix_cors::Cors;
+use actix_web::http;
 use actix_web::middleware::Logger;
 use actix_web::{web::Data, App, HttpServer};
 use async_graphql::{Schema, EmptySubscription};
@@ -32,7 +34,7 @@ async fn main() -> std::io::Result<()> {
     let db = match Database::connect(&connection_string).await {
         Ok(db) => {
             info!("Connected to the database successfully");
-            Arc::new(db) 
+            Arc::new(db)
         }
         Err(e) => {
             error!("Failed to connect to the database: {:?}", e);
@@ -45,7 +47,7 @@ async fn main() -> std::io::Result<()> {
         user::controllers::graphql::MutationRoot,
         EmptySubscription,
     )
-    .data(Arc::clone(&db))
+    .data(db.clone())
     .finish();
 
     info!("Server is running on http://127.0.0.1:8080");
@@ -54,7 +56,22 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(Logger::default())
             .app_data(Data::new(schema.clone()))
-            .app_data(Data::new(Arc::clone(&db)))
+            .app_data(Data::new(db.clone()))
+            .wrap(
+                Cors::default()
+                    .allowed_origin_fn(|origin, _req_head| {
+                        let allowed_origins = vec![
+                            "http://localhost:5173",
+                            "http://127.0.0.1:8080",
+                        ];
+
+                        allowed_origins.contains(&origin.to_str().unwrap_or_default())
+                    })
+                    .allowed_methods(vec!["GET", "POST", "OPTIONS"])
+                    .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
+                    .allowed_header(http::header::CONTENT_TYPE)
+                    .max_age(3600),
+            )
             .service(actix_web::web::resource("/graphql").guard(actix_web::guard::Post()).to(graphql_handler))
             .service(actix_web::web::resource("/graphql").guard(actix_web::guard::Get()).to(graphql_playground))
             .configure(init_user_routes)
