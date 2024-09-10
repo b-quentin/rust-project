@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
-	// Définition du type des données utilisateur
+	// Definition of the user data type
 	export let data: {
 		user: {
 			id: string;
@@ -11,20 +11,20 @@
 	};
 
 	onMount(() => {
-		console.log('Données reçues dans onMount:', data);
+		console.log('Data received in onMount:', data);
 	});
 </script>
 
-<h1>Détails de l'Utilisateur</h1>
+<h1>User Details</h1>
 
 {#if data.user}
 	<div class="user-details">
 		<p><strong>ID:</strong> {data.user.id}</p>
-		<p><strong>Nom d'utilisateur:</strong> {data.user.username}</p>
+		<p><strong>Username:</strong> {data.user.username}</p>
 		<p><strong>Email:</strong> {data.user.email}</p>
 	</div>
 {:else}
-	<p>Chargement...</p>
+	<p>Loading...</p>
 {/if}
 
 <style>

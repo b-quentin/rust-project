@@ -2,14 +2,14 @@ import type { PageLoad } from './$types';
 import { createApolloClient } from '$lib/apollo';
 import { gql } from '@apollo/client';
 
-// Définition de l'interface utilisateur
+// Definition of the User interface
 interface User {
   id: string;
   username: string;
   email: string;
 }
 
-// Définition de la requête GraphQL
+// Definition of the GraphQL query
 const GET_USER = gql`
 	query GetUser($id: UUID!) {
 		user(id: $id) {
@@ -20,7 +20,7 @@ const GET_USER = gql`
 	}
 `;
 
-// Fonction load pour récupérer les données utilisateur
+// Load function to fetch user data
 export const load: PageLoad = async ({ params, fetch }) => {
   const { id } = params;
   const client = createApolloClient(fetch);
@@ -31,17 +31,17 @@ export const load: PageLoad = async ({ params, fetch }) => {
       variables: { id }
     });
 
-    console.log('Données récupérées dans +page.ts:', data.user);
+    console.log('Data retrieved in +page.ts:', data.user);
 
-    // Retourner les données utilisateur
+    // Return the user data
     return {
-      user: data.user // Transmettre les données utilisateur comme props
+      user: data.user // Pass the user data as props
     };
   } catch (error) {
-    console.error('Erreur lors de la requête GraphQL:', error);
+    console.error('Error during GraphQL query:', error);
     return {
       status: 500,
-      error: new Error('Erreur de chargement des données utilisateur.')
+      error: new Error('Error loading user data.')
     };
   }
 };
