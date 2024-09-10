@@ -60,12 +60,13 @@ async fn main() -> std::io::Result<()> {
             .wrap(
                 Cors::default()
                     .allowed_origin_fn(|origin, _req_head| {
-                        let allowed_origins = vec![
-                            "http://localhost:5173",
-                            "http://127.0.0.1:8080",
-                        ];
+                        let allowed_origins = env::var("ALLOWED_ORIGINS")
+                            .unwrap_or_default()
+                            .split(',')
+                            .map(|s| s.trim().to_string())
+                            .collect::<Vec<String>>();
 
-                        allowed_origins.contains(&origin.to_str().unwrap_or_default())
+                        allowed_origins.contains(&origin.to_str().unwrap_or_default().to_string())
                     })
                     .allowed_methods(vec!["GET", "POST", "OPTIONS"])
                     .allowed_headers(vec![http::header::AUTHORIZATION, http::header::ACCEPT])
