@@ -50,7 +50,9 @@ async fn main() -> std::io::Result<()> {
     .data(db.clone())
     .finish();
 
-    info!("Server is running on http://127.0.0.1:8080");
+    let bind_address = env::var("BIND_ADDRESS").unwrap_or_else(|_| "127.0.0.1:8080".to_string());
+
+    info!("Server is running on http://{}", bind_address);
 
     HttpServer::new(move || {
         App::new()
@@ -77,7 +79,7 @@ async fn main() -> std::io::Result<()> {
             .service(actix_web::web::resource("/graphql").guard(actix_web::guard::Get()).to(graphql_playground))
             .configure(init_user_routes)
     })
-    .bind("127.0.0.1:8080")?
+    .bind(&bind_address)?
     .run()
     .await
 }
