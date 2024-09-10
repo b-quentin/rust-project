@@ -24,9 +24,9 @@ env_logger = "0.10"
 # A lightweight logging facade for producing log messages.
 log = "0.4"
 # An ORM for Rust, with support for PostgreSQL and asynchronous runtime.
-sea-orm = { version = "1.0.1", features = ["sqlx-postgres", "runtime-tokio-native-tls", "macros", "with-json", "mock"] }
+sea-orm = { version = "1.1.0-rc.1", features = ["sqlx-postgres", "runtime-tokio-native-tls", "macros", "with-json", "mock"] }
 # Macros for sea-orm to derive models easily.
-sea-orm-macros = "0.12.15"
+sea-orm-macros = "1.1.0-rc.1"
 # Serialization framework for Rust.
 serde = { version = "1.0", features = ["derive"] }
 # JSON serialization and deserialization for Rust.
