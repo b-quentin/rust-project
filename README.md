@@ -3,22 +3,25 @@
 ## Database
 Launch database
 ```bash
-docker compose up -d
+make docker/up
 ```
 ```bash
-sea-orm-cli migrate init
+make db/migrate/init
 ```
 ```bash
-export DATABASE_URL="postgresql://myuser:mypassword@localhost:5432/mydatabase"
-sea-orm-cli migrate up
-unset DATABASE_URL
+make db/migrate/up
 ```
 ```bash
-sea-orm-cli migrate down
+make db/migrate/down
 ```
 
 ## Start
-Launch App
+Launch App backend
 ```bash
-cargo run --bin app
+make app/back/up
+```
+
+Launch App frontend
+```bash
+make app/front/up
 ```
