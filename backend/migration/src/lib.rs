@@ -1,7 +1,7 @@
 pub use sea_orm_migration::prelude::*;
 
-mod m20220101_000001_create_table;
-mod m20240804_165641_user;
+mod user;
+mod dev_insert_default_users;
 
 pub struct Migrator;
 
@@ -9,8 +9,8 @@ pub struct Migrator;
 impl MigratorTrait for Migrator {
     fn migrations() -> Vec<Box<dyn MigrationTrait>> {
         vec![
-            Box::new(m20220101_000001_create_table::Migration),
-            Box::new(m20240804_165641_user::Migration),
+            Box::new(user::Migration),
+            Box::new(dev_insert_default_users::SeedUsers)
         ]
     }
 }
