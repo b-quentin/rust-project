@@ -19,7 +19,7 @@ db/migrate/up:
 	sea-orm-cli migrate up && \
 	unset DATABASE_URL
 
-db/migrate/up:
+db/migrate/down:
 	@export DATABASE_URL="postgresql://$(DATABASE_USER):$(DATABASE_PASSWORD)@$(DATABASE_URL):$(DATABASE_PORT)/$(DATABASE_NAME)" && \
 	cd backend && \
 	sea-orm-cli migrate down && \
