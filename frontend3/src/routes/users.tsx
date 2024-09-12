@@ -1,17 +1,20 @@
-import { Component, createEffect, createSignal, onMount } from "solid-js";
+import { Component, createSignal, onMount } from "solid-js";
 import client from "../lib/graphqlClient";
-import { gql } from "@solid-primitives/graphql";
+import { gql } from "graphql-request";
 
+// Define the User interface
 interface User {
   id: string;
   username: string;
   email: string;
 }
 
+// Define the expected response structure
 interface UsersResponse {
   users: User[];
 }
 
+// Define the GraphQL query
 const GetUsersQuery = gql`
   query GetUsers {
     users {
@@ -23,26 +26,25 @@ const GetUsersQuery = gql`
 `;
 
 const UsersPage: Component = () => {
+  // Initialize the users state
   const [users, setUsers] = createSignal<User[]>([]);
 
-  onMount(() => {
-    const [data, { refetch, mutate }] = client<UsersResponse>(GetUsersQuery);
-
-    createEffect(() => {
-      const response = data();
-
-      if (response) {
-        console.log("Data received:", response.users);
-        setUsers(response.users);
-      } else {
-        console.error("Unexpected response structure:", response);
-      }
-    });
+  // Fetch users data on component mount
+  onMount(async () => {
+    try {
+      // Fetch data using the GraphQL client
+      const data = await client.request<UsersResponse>(GetUsersQuery);
+      console.log("Data received:", data.users);
+      setUsers(data.users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
   });
 
   return (
     <div>
       <h1>Liste des Utilisateurs</h1>
+      {/* Render users list or fallback message */}
       {users().length > 0 ? (
         <ul>
           {users().map((user) => (
@@ -56,7 +58,7 @@ const UsersPage: Component = () => {
       )}
     </div>
   );
-}; // Correction: ajout de l'accolade fermante et du point-virgule ici
+};
 
 export default UsersPage;
 
