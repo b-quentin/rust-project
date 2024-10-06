@@ -10,7 +10,6 @@ use sea_orm::Database;
 use std::env;
 use std::sync::Arc;
 use template::internal::api::user;
-use template::internal::api::user::routes::init_user_routes;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -77,7 +76,6 @@ async fn main() -> std::io::Result<()> {
             )
             .service(actix_web::web::resource("/graphql").guard(actix_web::guard::Post()).to(graphql_handler))
             .service(actix_web::web::resource("/graphql").guard(actix_web::guard::Get()).to(graphql_playground))
-            .configure(init_user_routes)
     })
     .bind(&bind_address)?
     .run()
@@ -92,4 +90,3 @@ async fn graphql_playground() -> actix_web::Result<actix_web::HttpResponse> {
     let playground = async_graphql::http::GraphiQLSource::build().endpoint("/graphql").finish();
     Ok(actix_web::HttpResponse::Ok().content_type("text/html").body(playground))
 }
-
