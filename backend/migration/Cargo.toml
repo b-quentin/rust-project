@@ -10,6 +10,15 @@ path = "src/lib.rs"
 
 [dependencies]
 async-std = { version = "1", features = ["attributes", "tokio1"] }
+# Universally unique identifiers (UUIDs) for Rust, with serde support and version 4 UUIDs.
+uuid = { version = "1", features = ["serde", "v4"] }
+sea-orm = { version = "1.1.0-rc.1", features = ["sqlx-postgres", "runtime-tokio-native-tls", "macros", "with-json", "mock"] }
+# Loads environment variables from a .env file.
+dotenv = "0.15.0"
+# Provides a logger configured via environment variables.
+env_logger = "0.10"
+# A lightweight logging facade for producing log messages.
+log = "0.4"
 
 [dependencies.sea-orm-migration]
 version = "1.1.0-rc.1"
@@ -20,5 +29,5 @@ features = [
   # "runtime-tokio-rustls",  # `ASYNC_RUNTIME` feature
   # "sqlx-postgres",         # `DATABASE_DRIVER` feature
   "sqlx-postgres",
-  "runtime-tokio-native-tls"
+  "runtime-tokio-native-tls",
 ]
