@@ -1,4 +1,4 @@
-use sea_orm::{DatabaseConnection, EntityTrait, Set, ActiveModelTrait, QueryFilter, ColumnTrait};
+use sea_orm::{sqlx::types::chrono::Utc, ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 use uuid::Uuid;
 use crate::internal::api::user::models::user;
 use async_trait::async_trait;
@@ -6,7 +6,7 @@ use log::trace;
 
 #[async_trait]
 pub trait UserService {
-    async fn create_user(db: &DatabaseConnection, username: String, email: String, password: String) -> Result<user::Model, sea_orm::DbErr>;
+    async fn create_user(db: &DatabaseConnection, username: String, firstname: String, lastname: String, email: String, password: String) -> Result<user::Model, sea_orm::DbErr>;
     async fn get_user(db: &DatabaseConnection, id: Uuid) -> Result<Option<user::Model>, sea_orm::DbErr>;
     async fn get_all_users(db: &DatabaseConnection) -> Result<Vec<user::Model>, sea_orm::DbErr>;
     async fn update_user(db: &DatabaseConnection, id: Uuid, username: Option<String>, email: Option<String>, password: Option<String>) -> Result<user::Model, sea_orm::DbErr>;
@@ -19,14 +19,18 @@ pub struct UserServiceImpl;
 
 #[async_trait]
 impl UserService for UserServiceImpl {
-    async fn create_user(db: &DatabaseConnection, username: String, email: String, password: String) -> Result<user::Model, sea_orm::DbErr> {
+    async fn create_user(db: &DatabaseConnection, username: String, firstname: String, lastname: String, email: String, password: String) -> Result<user::Model, sea_orm::DbErr> {
         trace!("Creating user with username: '{}', email: '{}'", username, email);
         
         let new_user = user::ActiveModel {
             id: Set(Uuid::new_v4()),
             username: Set(username.clone()),
+            first_name: Set(firstname.clone()),
+            last_name: Set(lastname.clone()),
             email: Set(email.clone()),
             password: Set(hash_password(password)),
+            created_at: Set(Utc::now().into()),
+            updated_at: Set(Utc::now().into()),
         };
 
         match new_user.insert(db).await {

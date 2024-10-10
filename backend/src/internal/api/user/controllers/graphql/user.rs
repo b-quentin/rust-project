@@ -2,19 +2,23 @@ use std::sync::Arc;
 use async_graphql::{Context, Error, Object, SimpleObject, InputObject};
 use sea_orm::DatabaseConnection;
 use uuid::Uuid;
-use log::trace;
+use log::{error, trace};
 use crate::internal::api::user::services::user::{UserService, UserServiceImpl};
 
 #[derive(SimpleObject)]
 struct User {
     id: Uuid,
     username: String,
+    firstname: String,
+    lastname: String,
     email: String,
 }
 
 #[derive(InputObject)]
 pub struct CreateUserInput {
     pub username: String,
+    pub firstname: String,
+    pub lastname: String,
     pub email: String,
     pub password: String,
 }
@@ -47,6 +51,8 @@ impl QueryRoot {
                 Ok(Some(User {
                     id: u.id,
                     username: u.username,
+                    firstname: u.first_name,
+                    lastname: u.last_name,
                     email: u.email,
                 }))
             },
@@ -73,6 +79,8 @@ impl QueryRoot {
                 Ok(users.into_iter().map(|u| User {
                     id: u.id,
                     username: u.username,
+                    firstname: u.first_name,
+                    lastname: u.last_name,
                     email: u.email,
                 }).collect())
             },
@@ -98,28 +106,31 @@ impl MutationRoot {
         };
 
         // Check if the email already exists in the database
-        match UserServiceImpl::find_user_by_email(db.as_ref(), input.email.clone()).await {
-            Ok(Some(_)) => {
-                return Err(Error::new(format!("Email '{}' is already in use.", input.email)));
-            },
-            Ok(None) => {
-                // Email does not exist, proceed with user creation
-            },
-            Err(e) => {
-                return Err(Error::new(format!("Failed to check email uniqueness: {}", e)));
-            }
-        }
+        //match UserServiceImpl::find_user_by_email(db.as_ref(), input.email.clone()).await {
+        //    Ok(Some(_)) => {
+        //        return Err(Error::new(format!("Email '{}' is already in use.", input.email)));
+        //    },
+        //    Ok(None) => {
+        //        // Email does not exist, proceed with user creation
+        //    },
+        //    Err(e) => {
+        //        return Err(Error::new(format!("Failed to check email uniqueness: {}", e)));
+        //    }
+        //}
 
-        match UserServiceImpl::create_user(db.as_ref(), input.username.clone(), input.email.clone(), input.password).await {
+        match UserServiceImpl::create_user(db.as_ref(), input.username.clone(), input.firstname.clone(), input.lastname.clone(), input.email.clone(), input.password).await {
             Ok(user) => {
                 trace!("User created successfully: {:?}", user);
                 Ok(User {
                     id: user.id,
                     username: user.username,
+                    firstname: user.first_name,
+                    lastname: user.last_name,
                     email: user.email,
                 })
             },
             Err(e) => {
+                error!("Failed to create usser with username '{}', email '{}': {}", input.username, input.email, e);
                 Err(Error::new(format!("Failed to create user with username '{}', email '{}': {}", input.username, input.email, e)))
             }
         }
@@ -130,6 +141,7 @@ impl MutationRoot {
         let db = match ctx.data::<Arc<DatabaseConnection>>() {
             Ok(db) => db,
             Err(e) => {
+                error!("Failed to access database connection in context with error {:?}", e);
                 return Err(Error::new(format!("Failed to access database connection in context with error {:?}", e)));
             }
         };
@@ -140,10 +152,13 @@ impl MutationRoot {
                 Ok(User {
                     id: user.id,
                     username: user.username,
+                    firstname: user.first_name,
+                    lastname: user.last_name,
                     email: user.email,
                 })
             },
             Err(e) => {
+                error!("Failed to update user with id '{}', username '{:?}', email '{:?}': {}", input.id, input.username, input.email, e);
                 Err(Error::new(format!("Failed to update user with id '{}', username '{:?}', email '{:?}': {}", input.id, input.username, input.email, e)))
             }
         }
@@ -154,6 +169,7 @@ impl MutationRoot {
         let db = match ctx.data::<Arc<DatabaseConnection>>() {
             Ok(db) => db,
             Err(e) => {
+                error!("Failed to access database connection in context with error {:?}", e);
                 return Err(Error::new(format!("Failed to access database connection in context with error {:?}", e)));
             }
         };
@@ -164,6 +180,7 @@ impl MutationRoot {
                 Ok(result)
             },
             Err(e) => {
+                error!("Failed to delete user with id '{}': {}", id, e);
                 Err(Error::new(format!("Failed to delete user with id '{}': {}", id, e)))
             }
         }

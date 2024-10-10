@@ -13,6 +13,8 @@ async fn test_create_user() -> Result<(), DbErr> {
             vec![user::Model {
                 id: Uuid::new_v4(),
                 username: "test_user".to_owned(),
+                firstname: "test".to_owned(),
+                lastname: "user".to_owned(),
                 email: "test@example.com".to_owned(),
                 password: "hashed_password".to_owned(),
             }],
@@ -23,6 +25,8 @@ async fn test_create_user() -> Result<(), DbErr> {
     let result = UserServiceImpl::create_user(
         &db,
         "test_user".to_string(),
+        "test".to_string(),
+        "user".to_string(),
         "test@example.com".to_string(),
         "password".to_string()
     ).await;
@@ -47,6 +51,8 @@ async fn test_create_user_db_error() -> Result<(), DbErr> {
     let result = UserServiceImpl::create_user(
         &db,
         "test_user".to_string(),
+        "test".to_string(),
+        "user".to_string(),
         "test@example.com".to_string(),
         "password".to_string(),
     ).await;
@@ -73,6 +79,8 @@ async fn test_get_user_found() -> Result<(), DbErr> {
             vec![user::Model {
                 id: fixed_uuid,
                 username: "test_user".to_owned(),
+                firstname: "test".to_owned(),
+                lastname: "user".to_owned(),
                 email: "test@example.com".to_owned(),
                 password: "hashed_password".to_owned(),
             }],
@@ -145,12 +153,16 @@ async fn test_get_all_users_success() {
             user::Model {
                 id: uuid1,
                 username: "test_user1".to_owned(),
+                firstname: "test".to_owned(),
+                lastname: "user".to_owned(),
                 email: "test1@example.com".to_owned(),
                 password: "hashed_password1".to_owned(),
             },
             user::Model {
                 id: uuid2,
                 username: "test_user2".to_owned(),
+                firstname: "test".to_owned(),
+                lastname: "user".to_owned(),
                 email: "test2@example.com".to_owned(),
                 password: "hashed_password2".to_owned(),
             },
@@ -207,6 +219,8 @@ async fn test_find_user_by_email_success() {
         .append_query_results([vec![user::Model {
             id: uuid,
             username: "test_user".to_owned(),
+            firstname: "test".to_owned(),
+            lastname: "user".to_owned(),
             email: "test@example.com".to_owned(),
             password: "hashed_password".to_owned(),
         }]])
@@ -305,6 +319,8 @@ async fn test_update_user_success() -> Result<(), DbErr> {
     let initial_user = user::Model {
         id: fixed_uuid,
         username: "old_username".to_string(),
+        firstname: "old_first".to_string(),
+        lastname: "old_last".to_string(),
         email: "old_email@example.com".to_string(),
         password: "old_password_hash".to_string(),
     };
@@ -316,6 +332,8 @@ async fn test_update_user_success() -> Result<(), DbErr> {
             vec![user::Model { // Expected updated user
                 id: fixed_uuid,
                 username: "new_username".to_owned(),
+                firstname: "old_first".to_owned(),
+                lastname: "old_last".to_owned(),
                 email: "new_email@example.com".to_owned(),
                 password: "old_password_hash".to_owned(), // Assuming password isn't updated in this test
             }],
