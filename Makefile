@@ -9,6 +9,19 @@ docker/up:
 	@echo "Starting Docker containers..."
 	@cd docker && docker compose up -d
 
+docker/nuke:
+	@echo "Starting Docker containers..."
+	@cd docker && docker compose down -v
+
+db/exec:
+	PGPASSWORD=$(DATABASE_PASSWORD) psql -h $(DATABASE_URL) -U $(DATABASE_USER) $(DATABASE_NAME)
+
+db/migrate/up-verbose:
+	@export DATABASE_URL=$(DATABASE) && \
+	cd backend && \
+		sea-orm-cli migrate -v
+	unset DATABASE_URL
+
 db/migrate/init:
 	@export DATABASE_URL=$(DATABASE) && \
 	cd backend && \
