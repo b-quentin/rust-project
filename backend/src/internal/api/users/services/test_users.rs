@@ -1,7 +1,7 @@
-use crate::internal::api::user::services::user::*;
-use crate::internal::api::user::models::user;
+use crate::internal::api::users::services::users::*;
+use crate::internal::api::users::models::users;
 use sea_orm::{
-    DatabaseBackend, DbErr, MockDatabase, MockExecResult
+    sqlx::types::chrono::Utc, DatabaseBackend, DbErr, MockDatabase, MockExecResult
 };
 use uuid::Uuid;
 
@@ -10,13 +10,15 @@ async fn test_create_user() -> Result<(), DbErr> {
     // Configure the mock database
     let db = MockDatabase::new(DatabaseBackend::Postgres)
         .append_query_results([
-            vec![user::Model {
+            vec![users::Model {
                 id: Uuid::new_v4(),
                 username: "test_user".to_owned(),
-                firstname: "test".to_owned(),
-                lastname: "user".to_owned(),
+                first_name: "test".to_owned(),
+                last_name: "user".to_owned(),
                 email: "test@example.com".to_owned(),
                 password: "hashed_password".to_owned(),
+                created_at: Utc::now().into(),
+                updated_at: Utc::now().into(),
             }],
         ])
         .into_connection();
@@ -76,13 +78,15 @@ async fn test_get_user_found() -> Result<(), DbErr> {
     // Configure the mock database with a matching user
     let db = MockDatabase::new(DatabaseBackend::Postgres)
         .append_query_results([
-            vec![user::Model {
+            vec![users::Model {
                 id: fixed_uuid,
                 username: "test_user".to_owned(),
-                firstname: "test".to_owned(),
-                lastname: "user".to_owned(),
+                first_name: "test".to_owned(),
+                last_name: "user".to_owned(),
                 email: "test@example.com".to_owned(),
                 password: "hashed_password".to_owned(),
+                created_at: Utc::now().into(),
+                updated_at: Utc::now().into(),
             }],
         ])
         .into_connection();
@@ -108,7 +112,7 @@ async fn test_get_user_not_found() -> Result<(), DbErr> {
     let fixed_uuid = Uuid::parse_str("51c84da0-6fbe-4db2-81fe-385a38d29353").unwrap();
 
     let db = MockDatabase::new(DatabaseBackend::Postgres)
-        .append_query_results::<user::Model, Vec<user::Model>, _>([vec![]]) // Correctly specify the type for empty results
+        .append_query_results::<users::Model, Vec<users::Model>, _>([vec![]]) // Correctly specify the type for empty results
         .into_connection();
 
     // Call the get_user function with the mock database
@@ -150,21 +154,25 @@ async fn test_get_all_users_success() {
     // Mock the database with multiple users
     let db = MockDatabase::new(DatabaseBackend::Postgres)
         .append_query_results([vec![
-            user::Model {
+            users::Model {
                 id: uuid1,
                 username: "test_user1".to_owned(),
-                firstname: "test".to_owned(),
-                lastname: "user".to_owned(),
+                first_name: "test".to_owned(),
+                last_name: "user".to_owned(),
                 email: "test1@example.com".to_owned(),
                 password: "hashed_password1".to_owned(),
+                created_at: Utc::now().into(),
+                updated_at: Utc::now().into(),
             },
-            user::Model {
+            users::Model {
                 id: uuid2,
                 username: "test_user2".to_owned(),
-                firstname: "test".to_owned(),
-                lastname: "user".to_owned(),
+                first_name: "test".to_owned(),
+                last_name: "user".to_owned(),
                 email: "test2@example.com".to_owned(),
                 password: "hashed_password2".to_owned(),
+                created_at: Utc::now().into(),
+                updated_at: Utc::now().into(),
             },
         ]])
         .into_connection();
@@ -216,13 +224,15 @@ async fn test_find_user_by_email_success() {
 
     // Mock the database with a user matching the email
     let db = MockDatabase::new(DatabaseBackend::Postgres)
-        .append_query_results([vec![user::Model {
+        .append_query_results([vec![users::Model {
             id: uuid,
             username: "test_user".to_owned(),
-            firstname: "test".to_owned(),
-            lastname: "user".to_owned(),
+            first_name: "test".to_owned(),
+            last_name: "user".to_owned(),
             email: "test@example.com".to_owned(),
             password: "hashed_password".to_owned(),
+            created_at: Utc::now().into(),
+            updated_at: Utc::now().into(),
         }]])
         .into_connection();
 
@@ -245,7 +255,7 @@ async fn test_find_user_by_email_success() {
 async fn test_find_user_by_email_not_found() {
     // Mock the database to simulate no user found
     let db = MockDatabase::new(DatabaseBackend::Postgres)
-        .append_query_results::<user::Model, Vec<user::Model>, _>([vec![]]) // Correctly specify the type for empty results
+        .append_query_results::<users::Model, Vec<users::Model>, _>([vec![]]) // Correctly specify the type for empty results
         .into_connection();
 
     // Call the function to be tested
@@ -287,7 +297,7 @@ async fn test_update_user_not_found() -> Result<(), DbErr> {
 
     // Mock the database to return no user
     let db = MockDatabase::new(DatabaseBackend::Postgres)
-        .append_query_results::<user::Model, Vec<user::Model>, _>([vec![]]) // Correctly specify the type for empty results
+        .append_query_results::<users::Model, Vec<users::Model>, _>([vec![]]) // Correctly specify the type for empty results
         .into_connection();
 
     // Act: Call the update_user function
@@ -316,26 +326,30 @@ async fn test_update_user_success() -> Result<(), DbErr> {
     let fixed_uuid = Uuid::parse_str("51c84da0-6fbe-4db2-81fe-385a38d29353").unwrap();
 
     // Mock the initial state of the user in the database
-    let initial_user = user::Model {
+    let initial_user = users::Model {
         id: fixed_uuid,
         username: "old_username".to_string(),
-        firstname: "old_first".to_string(),
-        lastname: "old_last".to_string(),
+        first_name: "old_first".to_string(),
+        last_name: "old_last".to_string(),
         email: "old_email@example.com".to_string(),
         password: "old_password_hash".to_string(),
+        created_at: Utc::now().into(),
+        updated_at: Utc::now().into(),
     };
 
     // Mock the database with the initial user and expected updated user
     let db = MockDatabase::new(DatabaseBackend::Postgres)
         .append_query_results([
             vec![initial_user.clone()], // Initial fetch
-            vec![user::Model { // Expected updated user
+            vec![users::Model { // Expected updated user
                 id: fixed_uuid,
                 username: "new_username".to_owned(),
-                firstname: "old_first".to_owned(),
-                lastname: "old_last".to_owned(),
+                first_name: "old_first".to_owned(),
+                last_name: "old_last".to_owned(),
                 email: "new_email@example.com".to_owned(),
                 password: "old_password_hash".to_owned(), // Assuming password isn't updated in this test
+                created_at: Utc::now().into(),
+                updated_at: Utc::now().into(),
             }],
         ])
         .into_connection();

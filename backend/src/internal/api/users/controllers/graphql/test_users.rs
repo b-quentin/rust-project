@@ -5,11 +5,11 @@ use async_graphql::{
     EmptySubscription,
     Schema
 };
-use sea_orm::{DatabaseBackend, DbErr, MockDatabase, MockExecResult};
+use sea_orm::{sqlx::types::chrono::Utc, DatabaseBackend, DbErr, MockDatabase, MockExecResult};
 use uuid::Uuid;
-use crate::internal::api::user::{
-    controllers::graphql::{user::{CreateUserInput, UpdateUserInput}, MutationRoot, QueryRoot},
-    models::user
+use crate::internal::api::users::{
+    controllers::graphql::{users::{CreateUserInput, UpdateUserInput}, MutationRoot, QueryRoot},
+    models::users
 };
 
 #[tokio::test]
@@ -20,11 +20,15 @@ async fn test_user_found() {
     // Mock the database with a matching user
     let db = MockDatabase::new(DatabaseBackend::Postgres)
         .append_query_results([
-            vec![user::Model {
+            vec![users::Model {
                 id: fixed_uuid,
                 username: "test_user".to_owned(),
+                first_name: "test".to_owned(),
+                last_name: "user".to_owned(),
                 email: "test@example.com".to_owned(),
                 password: "hashed_password".to_owned(),
+                created_at: Utc::now().into(),
+                updated_at: Utc::now().into(),
             }],
         ])
         .into_connection();
@@ -62,7 +66,7 @@ async fn test_user_not_found() {
 
     // Mock the database to simulate no user found
     let db = MockDatabase::new(DatabaseBackend::Postgres)
-        .append_query_results::<user::Model, Vec<user::Model>, _>([vec![]]) // Correctly specify the type for empty results
+        .append_query_results::<users::Model, Vec<users::Model>, _>([vec![]]) // Correctly specify the type for empty results
         .into_connection();
 
     let db = Arc::new(db);
@@ -132,17 +136,25 @@ async fn test_users_found() {
     // Mock the database with multiple users
     let db = MockDatabase::new(DatabaseBackend::Postgres)
         .append_query_results([vec![
-            user::Model {
+            users::Model {
                 id: uuid1,
                 username: "test_user1".to_owned(),
                 email: "test1@example.com".to_owned(),
                 password: "hashed_password1".to_owned(),
+                first_name: "user".to_owned(),
+                last_name: "test".to_owned(),
+                created_at: Utc::now().into(),
+                updated_at: Utc::now().into(),
             },
-            user::Model {
+            users::Model {
                 id: uuid2,
                 username: "test_user2".to_owned(),
                 email: "test2@example.com".to_owned(),
                 password: "hashed_password2".to_owned(),
+                first_name: "user".to_owned(),
+                last_name: "test".to_owned(),
+                created_at: Utc::now().into(),
+                updated_at: Utc::now().into(),
             },
         ]])
         .into_connection();
@@ -185,7 +197,7 @@ async fn test_users_found() {
 async fn test_users_not_found() {
     // Mock the database to simulate no users found
     let db = MockDatabase::new(DatabaseBackend::Postgres)
-        .append_query_results::<user::Model, Vec<user::Model>, _>([vec![]]) // Correctly specify the type for empty results
+        .append_query_results::<users::Model, Vec<users::Model>, _>([vec![]]) // Correctly specify the type for empty results
         .into_connection();
 
     let db = Arc::new(db);
@@ -263,6 +275,8 @@ async fn test_create_user_success() {
         username: "test_user".to_string(),
         email: "test@example.com".to_string(),
         password: "password123".to_string(),
+        first_name: "test".to_string(),
+        last_name: "user".to_string(),
     };
 
     // Fixed UUID for the new user
@@ -270,19 +284,19 @@ async fn test_create_user_success() {
 
     // Mock the database to simulate successful user creation
     let db = MockDatabase::new(DatabaseBackend::Postgres)
-        // First, simulate the email check which should return no users (empty vector)
-        .append_query_results::<user::Model, Vec<user::Model>, _>([vec![]]) // No prior users in the system
-        // Then simulate the user creation process
         .append_exec_results([MockExecResult {
             rows_affected: 1, // Simulate successful insertion
-            last_insert_id: 0, // Not used but kept for structure
+            last_insert_id: 0, // Make sure this is set correctly if used
         }])
-        // Simulate the returned user after creation
-        .append_query_results([vec![user::Model {
+        .append_query_results([vec![users::Model {
             id: generated_uuid,
             username: input.username.clone(),
             email: input.email.clone(),
             password: "hashed_password".to_owned(),
+            first_name: input.first_name.clone(),
+            last_name: input.last_name.clone(),
+            created_at: Utc::now().into(),
+            updated_at: Utc::now().into(),
         }]])
         .into_connection();
 
@@ -300,12 +314,18 @@ async fn test_create_user_success() {
                 username: "{}",
                 email: "{}",
                 password: "{}"
+                firstName: "{}",
+                lastName: "{}"
             }}) {{
                 id
                 username
                 email
+                firstName
+                lastName
             }}
-        }}"#, input.username, input.email, input.password);
+        }}"#, input.username, input.email, input.password, input.first_name, input.last_name);
+
+    println!("Query: {}", query);
 
     let response = schema.execute(&query).await;
 
@@ -329,11 +349,13 @@ async fn test_create_user_db_error() {
         username: "test_user".to_string(),
         email: "test@example.com".to_string(),
         password: "password123".to_string(),
+        first_name: "test".to_string(),
+        last_name: "user".to_string(),
     };
 
     // Mock the database to return an error during user creation
     let db = MockDatabase::new(DatabaseBackend::Postgres)
-        .append_query_results::<user::Model, Vec<user::Model>, _>([vec![]]) // No prior users in the system
+        .append_query_results::<users::Model, Vec<users::Model>, _>([vec![]]) // No prior users in the system
         .append_exec_errors([DbErr::Custom("Insertion error".into())]) // Simulate a database error
         .into_connection();
 
@@ -351,12 +373,16 @@ async fn test_create_user_db_error() {
                 username: "{}",
                 email: "{}",
                 password: "{}"
+                firstName: "{}",
+                lastName: "{}"
             }}) {{
                 id
                 username
                 email
+                firstName
+                lastName
             }}
-        }}"#, input.username, input.email, input.password);
+        }}"#, input.username, input.email, input.password, input.first_name, input.last_name);
 
     let response = schema.execute(&query).await;
 
@@ -384,21 +410,29 @@ async fn test_update_user_success() {
 
     // Mock the database to simulate successful user update
     let db = MockDatabase::new(DatabaseBackend::Postgres)
-        .append_query_results([vec![user::Model {
+        .append_query_results([vec![users::Model {
             id: fixed_uuid,
             username: "original_user".to_owned(),
             email: "original@example.com".to_owned(),
             password: "hashed_password".to_owned(),
+            first_name: "original".to_owned(),
+            last_name: "user".to_owned(),
+            created_at: Utc::now().into(),
+            updated_at: Utc::now().into(),
         }]]) // Simulate finding the user
         .append_exec_results([MockExecResult {
             rows_affected: 1, // Simulate successful update
             last_insert_id: 0,
         }])
-        .append_query_results([vec![user::Model {
+        .append_query_results([vec![users::Model {
             id: fixed_uuid,
             username: input.username.clone().unwrap(),
             email: input.email.clone().unwrap(),
             password: "hashed_password".to_owned(),
+            first_name: "original".to_owned(),
+            last_name: "user".to_owned(),
+            created_at: Utc::now().into(),
+            updated_at: Utc::now().into(),
         }]]) // Simulate returning the updated user
         .into_connection();
 
@@ -448,7 +482,7 @@ async fn test_update_user_not_found() {
 
     // Mock the database to simulate user not found
     let db = MockDatabase::new(DatabaseBackend::Postgres)
-        .append_query_results::<user::Model, Vec<user::Model>, _>([vec![]]) // Correctly specify the type for empty results
+        .append_query_results::<users::Model, Vec<users::Model>, _>([vec![]]) // Correctly specify the type for empty results
         .into_connection();
 
     let db = Arc::new(db);
@@ -494,11 +528,15 @@ async fn test_update_user_db_error() {
 
     // Mock the database to return an error during update
     let db = MockDatabase::new(DatabaseBackend::Postgres)
-        .append_query_results([vec![user::Model {
+        .append_query_results([vec![users::Model {
             id: fixed_uuid,
             username: "original_user".to_owned(),
             email: "original@example.com".to_owned(),
             password: "hashed_password".to_owned(),
+            first_name: "original".to_owned(),
+            last_name: "user".to_owned(),
+            created_at: Utc::now().into(),
+            updated_at: Utc::now().into(),
         }]]) // Simulate finding the user
         .append_exec_errors([DbErr::Custom("Update error".into())]) // Simulate an error during update
         .into_connection();

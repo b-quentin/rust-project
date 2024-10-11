@@ -3,22 +3,22 @@ use async_graphql::{Context, Error, Object, SimpleObject, InputObject};
 use sea_orm::DatabaseConnection;
 use uuid::Uuid;
 use log::{error, trace};
-use crate::internal::api::user::services::user::{UserService, UserServiceImpl};
+use crate::internal::api::users::services::users::{UserService, UserServiceImpl};
 
 #[derive(SimpleObject)]
-struct User {
-    id: Uuid,
-    username: String,
-    firstname: String,
-    lastname: String,
-    email: String,
+pub struct User {
+    pub id: Uuid,
+    pub username: String,
+    pub first_name: String,
+    pub last_name: String,
+    pub email: String,
 }
 
 #[derive(InputObject)]
 pub struct CreateUserInput {
     pub username: String,
-    pub firstname: String,
-    pub lastname: String,
+    pub first_name: String,
+    pub last_name: String,
     pub email: String,
     pub password: String,
 }
@@ -51,8 +51,8 @@ impl QueryRoot {
                 Ok(Some(User {
                     id: u.id,
                     username: u.username,
-                    firstname: u.first_name,
-                    lastname: u.last_name,
+                    first_name: u.first_name,
+                    last_name: u.last_name,
                     email: u.email,
                 }))
             },
@@ -79,8 +79,8 @@ impl QueryRoot {
                 Ok(users.into_iter().map(|u| User {
                     id: u.id,
                     username: u.username,
-                    firstname: u.first_name,
-                    lastname: u.last_name,
+                    first_name: u.first_name,
+                    last_name: u.last_name,
                     email: u.email,
                 }).collect())
             },
@@ -96,7 +96,7 @@ pub struct MutationRoot;
 
 #[Object]
 impl MutationRoot {
-    async fn create_user(&self, ctx: &Context<'_>, input: CreateUserInput) -> async_graphql::Result<User> {
+    pub async fn create_user(&self, ctx: &Context<'_>, input: CreateUserInput) -> async_graphql::Result<User> {
         trace!("Creating user with username: '{}', email: '{}'", input.username, input.email);
         let db = match ctx.data::<Arc<DatabaseConnection>>() {
             Ok(db) => db,
@@ -118,20 +118,20 @@ impl MutationRoot {
         //    }
         //}
 
-        match UserServiceImpl::create_user(db.as_ref(), input.username.clone(), input.firstname.clone(), input.lastname.clone(), input.email.clone(), input.password).await {
+        match UserServiceImpl::create_user(db.as_ref(), input.username.clone(), input.first_name.clone(), input.last_name.clone(), input.email.clone(), input.password).await {
             Ok(user) => {
                 trace!("User created successfully: {:?}", user);
                 Ok(User {
                     id: user.id,
                     username: user.username,
-                    firstname: user.first_name,
-                    lastname: user.last_name,
+                    first_name: user.first_name,
+                    last_name: user.last_name,
                     email: user.email,
                 })
             },
             Err(e) => {
-                error!("Failed to create usser with username '{}', email '{}': {}", input.username, input.email, e);
-                Err(Error::new(format!("Failed to create user with username '{}', email '{}': {}", input.username, input.email, e)))
+                error!("Failed to create usser with username '{}', email '{}', first_name '{}', last_name '{}', error: {}", input.username, input.email, input.first_name, input.last_name, e);
+                Err(Error::new(format!("Failed to create user with username '{}', email '{}', first_name '{}', last_name '{}', error: {}", input.username, input.email, input.first_name, input.last_name, e)))
             }
         }
     }
@@ -152,8 +152,8 @@ impl MutationRoot {
                 Ok(User {
                     id: user.id,
                     username: user.username,
-                    firstname: user.first_name,
-                    lastname: user.last_name,
+                    first_name: user.first_name,
+                    last_name: user.last_name,
                     email: user.email,
                 })
             },

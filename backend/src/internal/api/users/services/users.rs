@@ -1,28 +1,28 @@
 use sea_orm::{sqlx::types::chrono::Utc, ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, Set};
 use uuid::Uuid;
-use crate::internal::api::user::models::user;
+use crate::internal::api::users::models::users;
 use async_trait::async_trait;
 use log::trace;
 
 #[async_trait]
 pub trait UserService {
-    async fn create_user(db: &DatabaseConnection, username: String, firstname: String, lastname: String, email: String, password: String) -> Result<user::Model, sea_orm::DbErr>;
-    async fn get_user(db: &DatabaseConnection, id: Uuid) -> Result<Option<user::Model>, sea_orm::DbErr>;
-    async fn get_all_users(db: &DatabaseConnection) -> Result<Vec<user::Model>, sea_orm::DbErr>;
-    async fn update_user(db: &DatabaseConnection, id: Uuid, username: Option<String>, email: Option<String>, password: Option<String>) -> Result<user::Model, sea_orm::DbErr>;
+    async fn create_user(db: &DatabaseConnection, username: String, firstname: String, lastname: String, email: String, password: String) -> Result<users::Model, sea_orm::DbErr>;
+    async fn get_user(db: &DatabaseConnection, id: Uuid) -> Result<Option<users::Model>, sea_orm::DbErr>;
+    async fn get_all_users(db: &DatabaseConnection) -> Result<Vec<users::Model>, sea_orm::DbErr>;
+    async fn update_user(db: &DatabaseConnection, id: Uuid, username: Option<String>, email: Option<String>, password: Option<String>) -> Result<users::Model, sea_orm::DbErr>;
     async fn delete_user(db: &DatabaseConnection, id: Uuid) -> Result<bool, sea_orm::DbErr>;
 
-    async fn find_user_by_email(db: &DatabaseConnection, email: String) -> Result<Option<user::Model>, sea_orm::DbErr>;
+    async fn find_user_by_email(db: &DatabaseConnection, email: String) -> Result<Option<users::Model>, sea_orm::DbErr>;
 }
 
 pub struct UserServiceImpl;
 
 #[async_trait]
 impl UserService for UserServiceImpl {
-    async fn create_user(db: &DatabaseConnection, username: String, firstname: String, lastname: String, email: String, password: String) -> Result<user::Model, sea_orm::DbErr> {
+    async fn create_user(db: &DatabaseConnection, username: String, firstname: String, lastname: String, email: String, password: String) -> Result<users::Model, sea_orm::DbErr> {
         trace!("Creating user with username: '{}', email: '{}'", username, email);
         
-        let new_user = user::ActiveModel {
+        let new_user = users::ActiveModel {
             id: Set(Uuid::new_v4()),
             username: Set(username.clone()),
             first_name: Set(firstname.clone()),
@@ -44,10 +44,10 @@ impl UserService for UserServiceImpl {
         }
     }
 
-    async fn get_user(db: &DatabaseConnection, id: Uuid) -> Result<Option<user::Model>, sea_orm::DbErr> {
+    async fn get_user(db: &DatabaseConnection, id: Uuid) -> Result<Option<users::Model>, sea_orm::DbErr> {
         trace!("Fetching user with id: {}", id);
 
-        match user::Entity::find_by_id(id).one(db).await {
+        match users::Entity::find_by_id(id).one(db).await {
             Ok(Some(user)) => {
                 trace!("User found: {:?}", user);
                 Ok(Some(user))
@@ -62,10 +62,10 @@ impl UserService for UserServiceImpl {
         }
     }
 
-    async fn get_all_users(db: &DatabaseConnection) -> Result<Vec<user::Model>, sea_orm::DbErr> {
+    async fn get_all_users(db: &DatabaseConnection) -> Result<Vec<users::Model>, sea_orm::DbErr> {
         trace!("Fetching all users");
 
-        match user::Entity::find().all(db).await {
+        match users::Entity::find().all(db).await {
             Ok(users) => {
                 trace!("Users found: {:?}", users);
                 Ok(users)
@@ -76,10 +76,10 @@ impl UserService for UserServiceImpl {
          }
     }
 
-    async fn update_user(db: &DatabaseConnection, id: Uuid, username: Option<String>, email: Option<String>, password: Option<String>) -> Result<user::Model, sea_orm::DbErr> {
+    async fn update_user(db: &DatabaseConnection, id: Uuid, username: Option<String>, email: Option<String>, password: Option<String>) -> Result<users::Model, sea_orm::DbErr> {
         trace!("Updating user with id: '{}', username: '{:?}', email: '{:?}'", id, username, email);
         
-        let mut user : user::ActiveModel = match user::Entity::find_by_id(id).one(db).await {
+        let mut user : users::ActiveModel = match users::Entity::find_by_id(id).one(db).await {
             Ok(Some(user)) => user.into(),
             Ok(None) => {
                 return Err(sea_orm::DbErr::RecordNotFound("User not found".into()));
@@ -113,7 +113,7 @@ impl UserService for UserServiceImpl {
     async fn delete_user(db: &DatabaseConnection, id: Uuid) -> Result<bool, sea_orm::DbErr> {
         trace!("Deleting user with id: {}", id);
 
-        match user::Entity::delete_by_id(id).exec(db).await {
+        match users::Entity::delete_by_id(id).exec(db).await {
             Ok(res) => {
                 if res.rows_affected > 0 {
                     trace!("User with id {} deleted successfully", id);
@@ -130,11 +130,11 @@ impl UserService for UserServiceImpl {
     }
 
 
-    async fn find_user_by_email(db: &DatabaseConnection, email: String) -> Result<Option<user::Model>, sea_orm::DbErr> {
+    async fn find_user_by_email(db: &DatabaseConnection, email: String) -> Result<Option<users::Model>, sea_orm::DbErr> {
         trace!("Searching for user with email: '{}'", email);
         
-        match user::Entity::find()
-            .filter(user::Column::Email.eq(email.clone())) // Ensure ColumnTrait is in scope
+        match users::Entity::find()
+            .filter(users::Column::Email.eq(email.clone())) // Ensure ColumnTrait is in scope
             .one(db)
             .await
         {
