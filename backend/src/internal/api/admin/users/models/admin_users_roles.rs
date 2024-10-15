@@ -3,7 +3,7 @@ use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Serialize, Deserialize)]
-#[sea_orm(table_name = "user_roles")]
+#[sea_orm(table_name = "admin_users_admin_roles")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub admin_user_id: Uuid,
