@@ -1,4 +1,4 @@
 pub mod users;
-pub use users::{UserQueryRoot, UserMutationRoot};
+pub use users::{UserQuery, UserMutation};
 #[cfg(test)]
 mod test_users;

@@ -11,10 +11,10 @@ pub struct GenerateTokenInput {
 }
 
 #[derive(Default)]
-pub struct AdminUserQueryRoot;
+pub struct AdminUserQuery;
 
 #[Object]
-impl AdminUserQueryRoot {
+impl AdminUserQuery {
     async fn verify_token(&self, token: String) -> async_graphql::Result<bool> {
         match UserAdminServiceImpl::verify_token(&token).await {
             Ok(_) => Ok(true),
@@ -24,10 +24,10 @@ impl AdminUserQueryRoot {
 }
 
 #[derive(Default)]
-pub struct AdminUserMutationRoot;
+pub struct AdminUserMutation;
 
 #[Object]
-impl AdminUserMutationRoot {
+impl AdminUserMutation {
     async fn generate_token(&self, ctx: &Context<'_>, input: GenerateTokenInput) -> async_graphql::Result<String> {
         let db = match ctx.data::<Arc<DatabaseConnection>>() {
             Ok(db) => db,
