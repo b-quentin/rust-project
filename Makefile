@@ -121,6 +121,10 @@ app/back/up:
 	@echo "Starting backend..."
 	@cd backend && cargo run --bin app
 
+app/back/test:
+	@echo "Starting backend..."
+	@cd backend && cargo test
+
 app/front/install:
 	@echo "Starting frontend..."
 	@cd frontend && pnpm install

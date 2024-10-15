@@ -19,6 +19,7 @@ async-graphql = { version = "5.0", features = ["dynamic-schema", "uuid"] }
 async-trait = "0.1.50"
 # Loads environment variables from a .env file.
 dotenv = "0.15.0"
+
 # Provides a logger configured via environment variables.
 env_logger = "0.10"
 # A lightweight logging facade for producing log messages.
@@ -35,7 +36,12 @@ serde_json = "1.0"
 tokio = { version = "1", features = ["full"] }
 # Universally unique identifiers (UUIDs) for Rust, with serde support and version 4 UUIDs.
 uuid = { version = "1", features = ["serde", "v4"] }
+# Library for encoding and decoding JSON Web Tokens (JWTs).
+jsonwebtoken = "9"
+thiserror = "1.0"
+chrono = "0.4"
 
 [[bin]]
 name = "app"
 path = "cmd/app/main.rs"
+

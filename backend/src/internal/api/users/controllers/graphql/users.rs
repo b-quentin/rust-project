@@ -32,10 +32,10 @@ pub struct UpdateUserInput {
 }
 
 #[derive(Default)]
-pub struct QueryRoot;
+pub struct UserQueryRoot;
 
 #[Object]
-impl QueryRoot {
+impl UserQueryRoot {
     async fn user(&self, ctx: &Context<'_>, id: Uuid) -> async_graphql::Result<Option<User>> {
         trace!("Fetching user with id: {}", id);
         let db = match ctx.data::<Arc<DatabaseConnection>>() {
@@ -92,10 +92,10 @@ impl QueryRoot {
 }
 
 #[derive(Default)]
-pub struct MutationRoot;
+pub struct UserMutationRoot;
 
 #[Object]
-impl MutationRoot {
+impl UserMutationRoot {
     pub async fn create_user(&self, ctx: &Context<'_>, input: CreateUserInput) -> async_graphql::Result<User> {
         trace!("Creating user with username: '{}', email: '{}'", input.username, input.email);
         let db = match ctx.data::<Arc<DatabaseConnection>>() {

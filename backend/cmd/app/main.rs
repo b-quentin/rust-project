@@ -2,14 +2,27 @@ use actix_cors::Cors;
 use actix_web::http;
 use actix_web::middleware::Logger;
 use actix_web::{web::Data, App, HttpServer};
-use async_graphql::{Schema, EmptySubscription};
+use async_graphql::{EmptySubscription, MergedObject, Schema};
 use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse};
 use dotenv::dotenv;
 use log::{debug, error, info};
 use sea_orm::Database;
 use std::env;
 use std::sync::Arc;
-use template::internal::api::user;
+use template::internal::api::{admin, users};
+
+#[derive(MergedObject, Default)]
+pub struct CombinedQueryRoot(
+    users::controllers::graphql::UserQueryRoot, 
+    admin::users::controllers::users::AdminUserQueryRoot,
+);
+
+
+#[derive(MergedObject, Default)]
+pub struct CombinedMutationRoot(
+    users::controllers::graphql::UserMutationRoot,
+    admin::users::controllers::users::AdminUserMutationRoot
+);
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -41,9 +54,11 @@ async fn main() -> std::io::Result<()> {
         }
     };
 
+
+
     let schema = Schema::build(
-        user::controllers::graphql::QueryRoot,
-        user::controllers::graphql::MutationRoot,
+        CombinedQueryRoot::default(),
+        CombinedMutationRoot::default(),
         EmptySubscription,
     )
     .data(db.clone())
@@ -82,7 +97,7 @@ async fn main() -> std::io::Result<()> {
     .await
 }
 
-async fn graphql_handler(schema: Data<Schema<user::controllers::graphql::QueryRoot, user::controllers::graphql::MutationRoot, EmptySubscription>>, req: GraphQLRequest) -> GraphQLResponse {
+async fn graphql_handler(schema: Data<Schema<CombinedQueryRoot, CombinedMutationRoot, EmptySubscription>>, req: GraphQLRequest) -> GraphQLResponse {
     schema.execute(req.into_inner()).await.into()
 }
 
