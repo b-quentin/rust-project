@@ -2,61 +2,15 @@ use actix_cors::Cors;
 use actix_web::http;
 use actix_web::middleware::Logger;
 use actix_web::{web::Data, App, HttpServer};
-use async_graphql::{EmptySubscription, MergedObject, Object, Schema};
+use async_graphql::{EmptySubscription, Schema};
 use async_graphql_actix_web::{GraphQLRequest, GraphQLResponse};
 use dotenv::dotenv;
 use log::{debug, error, info};
 use sea_orm::Database;
+use template::internal::graphql::mutations::MutationRoot;
+use template::internal::graphql::queries::QueryRoot;
 use std::env;
 use std::sync::Arc;
-use template::internal::api::{admin, users};
-
-
-#[derive(MergedObject, Default)]
-pub struct AdminQueryRoot(
-    admin::users::controllers::users::AdminUserQuery
-);
-
-#[derive(MergedObject, Default)]
-pub struct AdminMutationRoot(
-    admin::users::controllers::users::AdminUserMutation
-);
-
-#[derive(MergedObject, Default)]
-pub struct UserQueryRoot(
-    users::controllers::graphql::UserQuery
-);
-
-#[derive(MergedObject, Default)]
-pub struct UserMutationRoot(
-    users::controllers::graphql::UserMutation
-);
-
-#[derive(Default)]
-pub struct QueryRoot;
-
-#[Object]
-impl QueryRoot {
-    async fn admin(&self) -> AdminQueryRoot {
-        AdminQueryRoot::default()
-    }
-    async fn user(&self) -> UserQueryRoot {
-        UserQueryRoot::default()
-    }
-}
-
-#[derive(Default)]
-pub struct MutationRoot;
-
-#[Object]
-impl MutationRoot {
-    async fn admin(&self) -> AdminMutationRoot {
-        AdminMutationRoot::default()
-    }
-    async fn users(&self) -> UserMutationRoot {
-        UserMutationRoot::default()
-    }
-}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
