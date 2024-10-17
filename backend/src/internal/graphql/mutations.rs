@@ -4,7 +4,7 @@ use crate::internal::api::{admin, users};
 
 #[derive(MergedObject, Default)]
 pub struct AdminMutationRoot(
-    pub admin::users::controllers::auth::AdminUserMutation
+    pub admin::users::controllers::auth::AuthAdminQuery
 );
 
 #[derive(MergedObject, Default)]

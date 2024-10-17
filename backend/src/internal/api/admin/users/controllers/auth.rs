@@ -2,7 +2,7 @@ use std::sync::Arc;
 use sea_orm::DatabaseConnection;
 use async_graphql::{Context, Error, InputObject, Object};
 
-use crate::internal::api::admin::users::services::users::{UserAdminService, UserAdminServiceImpl};
+use crate::internal::api::admin::users::services::auth::{AuthAdminService, AuthAdminServiceImpl};
 
 #[derive(InputObject)]
 pub struct GenerateTokenInput {
@@ -11,12 +11,12 @@ pub struct GenerateTokenInput {
 }
 
 #[derive(Default)]
-pub struct AdminUserQuery;
+pub struct AuthAdminQuery;
 
 #[Object]
-impl AdminUserQuery {
+impl AuthAdminQuery {
     async fn verify_token(&self, token: String) -> async_graphql::Result<bool> {
-        match UserAdminServiceImpl::verify_token(&token).await {
+        match AuthAdminServiceImpl::verify_token(&token).await {
             Ok(_) => Ok(true),
             Err(e) => Err(Error::new(format!("Failed to verify token with error {}", e)))
         }
@@ -24,10 +24,10 @@ impl AdminUserQuery {
 }
 
 #[derive(Default)]
-pub struct AdminUserMutation;
+pub struct AuthAdminMutation;
 
 #[Object]
-impl AdminUserMutation {
+impl AuthAdminMutation {
     async fn generate_token(&self, ctx: &Context<'_>, input: GenerateTokenInput) -> async_graphql::Result<String> {
         let db = match ctx.data::<Arc<DatabaseConnection>>() {
             Ok(db) => db,
@@ -36,7 +36,7 @@ impl AdminUserMutation {
             }
         };
 
-        match UserAdminServiceImpl::generate_token(db.as_ref(), input.username, input.password).await {
+        match AuthAdminServiceImpl::generate_token(db.as_ref(), input.username, input.password).await {
             Ok(token) => {
                 Ok(token)
             },
