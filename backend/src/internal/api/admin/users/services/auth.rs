@@ -1,119 +1,102 @@
 use std::time::{SystemTime, UNIX_EPOCH};
-
-use chrono::Duration;
-use jsonwebtoken::{decode, DecodingKey, TokenData, Validation};
-use jsonwebtoken::{encode, EncodingKey, Header};
-use sea_orm::{sqlx::types::chrono::Utc, DatabaseConnection};
+use chrono::{Duration, Utc};
+use jsonwebtoken::{decode, DecodingKey, Validation, encode, EncodingKey, Header};
+use sea_orm::{DatabaseConnection, EntityTrait, ColumnTrait, QueryFilter};
 use async_trait::async_trait;
 use log::trace;
-use thiserror::Error;
 use uuid::Uuid;
-use crate::internal::api::admin::users::models::{admin_actions, admin_entities, admin_roles_actions_entities_assignements, admin_users, admin_users_roles};
-use sea_orm::EntityTrait;
-use sea_orm::ColumnTrait;
-use sea_orm::QueryFilter;
+use crate::internal::api::admin::users::{errors::auth::AdminAuthError, models::{admin_actions, admin_entities, admin_roles_actions_entities_assignements, admin_users, admin_users_roles}};
+use std::env;
 
-#[derive(Error, Debug)]
-pub enum AuthError {
-    #[error("Database error: {0}")]
-    DatabaseError(#[from] sea_orm::DbErr),
-    
-    #[error("JWT error: {0}")]
-    JwtError(#[from] jsonwebtoken::errors::Error),
-    
-    #[error("Password mismatch")]
-    InvalidPassword,
 
-    #[error("User not found: {0}")]
-    UserNotFound(String),
-
-    #[error("Unexpected error: {0}")]
-    UnexpectedError(String),
-
-    #[error("Permission denied: {0}")]
-    PermissionDenied(String),
-
-    #[error("Not found: {0}")]
-    NotFound(String),
-}
 
 #[async_trait]
 pub trait AuthAdminService {
-    async fn generate_token(db: &DatabaseConnection, username: String, password: String) -> Result<String, AuthError>;
-    async fn verify_token(token: &str) -> Result<Claims, AuthError>;
-    async fn get_user_permissions<'a>(db: &'a DatabaseConnection, user_id: Uuid, action: &'a str, entities: &'a str) -> Result<admin_users::Model, AuthError>;
+    async fn generate_token(db: &DatabaseConnection, email: String, password: String) -> Result<String, AdminAuthError>;
+    async fn verify_token(token: &str) -> Result<Claims, AdminAuthError>;
+    async fn get_user_permissions<'a>(db: &'a DatabaseConnection, user_id: Uuid, action: &'a str, entities: &'a str) -> Result<admin_users::Model, AdminAuthError>;
 }
 
 pub struct AuthAdminServiceImpl;
 
-// Modèle des claims pour le JWT
+// Model for JWT claims
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct Claims {
     pub sub: Uuid,
     pub exp: usize,
 }
 
+impl Claims {
+    fn is_expired(&self) -> bool {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards")
+            .as_secs() as usize;
+        self.exp < now
+    }
+}
+
 #[async_trait]
 impl AuthAdminService for AuthAdminServiceImpl {
-    // Function to verify the JWT token
-    async fn verify_token(token: &str) -> Result<Claims, AuthError> {
+    async fn verify_token(token: &str) -> Result<Claims, AdminAuthError> {
         trace!("Verifying token: {}", token);
 
-        // Decode the token using the same secret used to sign it
-        let token_data: TokenData<Claims> = decode::<Claims>(
+        let secret = env::var("JWT_SECRET").unwrap_or_else(|_| "votre_secret".to_string());
+
+        let token_data = match decode::<Claims>(
             token,
-            &DecodingKey::from_secret("votre_secret".as_ref()), // Same secret used to encode
-            &Validation::default(), // Default validation (can be customized)
-        ).map_err(AuthError::JwtError)?;
+            &DecodingKey::from_secret(secret.as_ref()), 
+            &Validation::default(),
+        ) {
+            Ok(data) => data,
+            Err(e) => return Err(AdminAuthError::JwtError(e)),
+        };
 
-        // Check token expiration
-        let now = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards").as_secs() as usize;
-
-        if token_data.claims.exp < now {
-            return Err(AuthError::UnexpectedError("Token expired".to_string()));
+        if token_data.claims.is_expired() {
+            return Err(AdminAuthError::TokenExpired);
         }
 
-        // Return the claims if token is valid
         Ok(token_data.claims)
     }
 
-    async fn generate_token(db: &DatabaseConnection, email: String, password: String) -> Result<String, AuthError> {
-        use log::trace;
+    async fn generate_token(db: &DatabaseConnection, email: String, password: String) -> Result<String, AdminAuthError> {
+        trace!("Generating token for user with email: '{}'", email);
 
-        trace!("Generating token for user with username: '{}'", email);
-
-        // Recherche de l'utilisateur dans la base de données
-        let user = admin_users::Entity::find()
+        let user = match admin_users::Entity::find()
             .filter(admin_users::Column::Email.eq(email.clone()))
             .one(db)
-            .await?;
+            .await
+        {
+            Ok(Some(user)) => user,
+            Ok(None) => return Err(AdminAuthError::UserNotFound(email)),
+            Err(e) => return Err(AdminAuthError::DatabaseError(e)),
+        };
 
-        if let Some(user) = user {
-            if password == user.password {
-                // Génération d'un token JWT
-                let expiration = Utc::now()
-                    .checked_add_signed(Duration::seconds(3600))  // Token expire dans 1 heure
-                    .expect("failed to create expiration timestamp")
-                    .timestamp();
+        if password == user.password {
+            let expiration = match Utc::now().checked_add_signed(Duration::seconds(3600)) {
+                Some(expiration) => expiration.timestamp(),
+                None => return Err(AdminAuthError::UnexpectedError("Failed to create expiration timestamp".to_string())),
+            };
 
-                let claims = Claims { 
-                    sub: user.id.clone(), 
-                    exp: expiration as usize 
-                };
+            let claims = Claims { 
+                sub: user.id.clone(), 
+                exp: expiration as usize 
+            };
 
-                // Encode le token avec une clé secrète (à sécuriser)
-                let token = encode(
-                    &Header::default(), 
-                    &claims, 
-                    &EncodingKey::from_secret("votre_secret".as_ref())  // Remplacez "votre_secret" par une clé plus sécurisée
-                )?;
+            let secret = env::var("JWT_SECRET").unwrap_or_else(|_| "votre_secret".to_string());
 
-                Ok(token)
-            } else {
-                return Err(AuthError::InvalidPassword);
-            }
+            let token = match encode(
+                &Header::default(), 
+                &claims, 
+                &EncodingKey::from_secret(secret.as_ref())
+            ) {
+                Ok(token) => token,
+                Err(e) => return Err(AdminAuthError::JwtError(e)),
+            };
+
+            Ok(token)
         } else {
-            return Err(AuthError::UserNotFound(email));
+            Err(AdminAuthError::InvalidPassword)
         }
     }
 
@@ -122,60 +105,69 @@ impl AuthAdminService for AuthAdminServiceImpl {
         user_id: Uuid,
         action: &'a str,
         entities: &'a str,
-    ) -> Result<admin_users::Model, AuthError> {
+    ) -> Result<admin_users::Model, AdminAuthError> {
         trace!("Fetching roles for user_id: {}", user_id);
 
-        // Fetch roles associated with the user
-        let user_roles = admin_users_roles::Entity::find()
+        let user_roles = match admin_users_roles::Entity::find()
             .filter(admin_users_roles::Column::AdminUserId.eq(user_id))
             .all(db)
-            .await
-            .map_err(AuthError::DatabaseError)?;
+            .await 
+        {
+            Ok(roles) => roles,
+            Err(e) => return Err(AdminAuthError::DatabaseError(e)),
+        };
 
         if user_roles.is_empty() {
-            return Err(AuthError::PermissionDenied("User has no roles assigned".to_string()));
+            return Err(AdminAuthError::PermissionDenied("User has no roles assigned".to_string()));
         }
 
-        // Fetch action ID
-        let action_id = admin_actions::Entity::find()
+        let action_id = match admin_actions::Entity::find()
             .filter(admin_actions::Column::Name.eq(action))
             .one(db)
-            .await
-            .map_err(AuthError::DatabaseError)?
-            .ok_or_else(|| AuthError::NotFound("Action not found".to_string()))?
-            .id;
+            .await 
+        {
+            Ok(Some(action)) => action.id,
+            Ok(None) => return Err(AdminAuthError::NotFound("Action not found".to_string())),
+            Err(e) => return Err(AdminAuthError::DatabaseError(e)),
+        };
 
-        // Fetch entity ID
-        let entity_id = admin_entities::Entity::find()
+        let entity_id = match admin_entities::Entity::find()
             .filter(admin_entities::Column::Name.eq(entities))
             .one(db)
-            .await
-            .map_err(AuthError::DatabaseError)?
-            .ok_or_else(|| AuthError::NotFound("Entity not found".to_string()))?
-            .id;
+            .await 
+        {
+            Ok(Some(entity)) => entity.id,
+            Ok(None) => return Err(AdminAuthError::NotFound("Entity not found".to_string())),
+            Err(e) => return Err(AdminAuthError::DatabaseError(e)),
+        };
 
-        // Fetch permissions associated with the user's roles
-        let permissions = admin_roles_actions_entities_assignements::Entity::find()
+        let permissions = match admin_roles_actions_entities_assignements::Entity::find()
             .filter(admin_roles_actions_entities_assignements::Column::RoleId.is_in(
                 user_roles.iter().map(|role| role.role_admin_id),
             ))
             .filter(admin_roles_actions_entities_assignements::Column::PermissionId.eq(action_id))
             .filter(admin_roles_actions_entities_assignements::Column::EntityId.eq(entity_id))
             .all(db)
-            .await
-            .map_err(AuthError::DatabaseError)?;
+            .await 
+        {
+            Ok(perms) => perms,
+            Err(e) => return Err(AdminAuthError::DatabaseError(e)),
+        };
 
         if permissions.is_empty() {
-            return Err(AuthError::PermissionDenied("No permissions found for the user".to_string()));
+            return Err(AdminAuthError::PermissionDenied("No permissions found for the user".to_string()));
         }
 
-        // Fetch the user model to return
-        let user = admin_users::Entity::find_by_id(user_id)
+        let user = match admin_users::Entity::find_by_id(user_id)
             .one(db)
-            .await
-            .map_err(AuthError::DatabaseError)?
-            .ok_or_else(|| AuthError::NotFound("User not found".to_string()))?;
+            .await 
+        {
+            Ok(Some(user)) => user,
+            Ok(None) => return Err(AdminAuthError::NotFound("User not found".to_string())),
+            Err(e) => return Err(AdminAuthError::DatabaseError(e)),
+        };
 
         Ok(user)
     }
 }
+

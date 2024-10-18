@@ -1,8 +1,8 @@
 use std::sync::Arc;
 use sea_orm::DatabaseConnection;
-use async_graphql::{Context, Error, InputObject, Object};
+use async_graphql::{Context, InputObject, Object};
 
-use crate::internal::api::admin::users::services::auth::{AuthAdminService, AuthAdminServiceImpl};
+use crate::internal::api::admin::users::{errors::db::DbError, services::auth::{AuthAdminService, AuthAdminServiceImpl}};
 
 #[derive(InputObject)]
 pub struct GenerateTokenInput {
@@ -18,7 +18,7 @@ impl AuthAdminQuery {
     async fn verify_token(&self, token: String) -> async_graphql::Result<bool> {
         match AuthAdminServiceImpl::verify_token(&token).await {
             Ok(_) => Ok(true),
-            Err(e) => Err(Error::new(format!("Failed to verify token with error {}", e)))
+            Err(e) => Err(e.extend()),
         }
     }
 }
@@ -32,7 +32,7 @@ impl AuthAdminMutation {
         let db = match ctx.data::<Arc<DatabaseConnection>>() {
             Ok(db) => db,
             Err(e) => {
-                return Err(Error::new(format!("Failed to access database connection in context with error {:?}", e)));
+                return Err(DbError::DatabaseError(format!("{:?}", e)).extend());
             }
         };
 
@@ -40,9 +40,9 @@ impl AuthAdminMutation {
             Ok(token) => {
                 Ok(token)
             },
-            Err(e) => {
-                Err(Error::new(format!("Failed to generate token with error {}", e)))
-            }
+            Err(e) => { 
+                return Err(e.extend()); 
+            },
         }
     }
 }

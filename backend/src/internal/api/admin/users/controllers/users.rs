@@ -1,10 +1,10 @@
 use std::sync::Arc;
 use log::trace;
 use sea_orm::DatabaseConnection;
-use async_graphql::{Context, Error, Object, SimpleObject};
+use async_graphql::{Context, Object, SimpleObject};
 use uuid::Uuid;
 
-use crate::internal::api::admin::users::services::{auth::{AuthAdminService, AuthAdminServiceImpl}, users::{UserAdminService, UserAdminServiceImpl}};
+use crate::internal::api::admin::users::{errors::db::DbError, services::{auth::{AuthAdminService, AuthAdminServiceImpl}, users::{UserAdminService, UserAdminServiceImpl}}};
 
 #[derive(SimpleObject)]
 pub struct UserAdmin {
@@ -27,21 +27,21 @@ impl AdminUserQuery {
                 claims
             },
             Err(e) => {
-                return Err(Error::new(format!("Failed to verify token with error {}", e)));
+                return Err(e.extend());
             }
         };
 
         let _ = match AuthAdminServiceImpl::get_user_permissions(ctx.data::<Arc<DatabaseConnection>>().unwrap().as_ref(), claims.sub, "can_read", "Pages::AdminHome").await {
             Ok(_) => {},
             Err(e) => {
-                return Err(Error::new(format!("Failed to get user permissions with error {}", e)));
+                return Err(e.extend());
             }
         };
 
         let db = match ctx.data::<Arc<DatabaseConnection>>() {
             Ok(db) => db,
             Err(e) => {
-                return Err(Error::new(format!("Failed to access database connection in context with error {:?}", e)));
+                return Err(DbError::DatabaseError(format!("{:?}", e)).extend());
             }
         };
 
@@ -57,7 +57,7 @@ impl AdminUserQuery {
                 }).collect())
             },
             Err(e) => {
-                Err(Error::new(format!("Failed to fetch users with error {}", e)))
+                Err(e.extend())
             }
         }
     }
