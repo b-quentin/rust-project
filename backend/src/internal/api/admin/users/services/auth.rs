@@ -16,7 +16,7 @@ use crate::internal::api::admin::users::{
         admin_roles_actions_entities_assignements, 
         admin_users, 
         admin_users_roles
-    }
+    }, services::users::{UserAdminService, UserAdminServiceImpl}
 };
 
 #[async_trait]
@@ -74,7 +74,7 @@ impl TokenService for JwtTokenService {
     async fn generate_token(db: &DatabaseConnection, email: String, password: String) -> Result<String, Box<dyn CustomGraphQLError>> {
         trace!("Generating token for user with email: '{}'", email);
 
-        let user = get_user_by_email(db, &email).await?;
+        let user = UserAdminServiceImpl::get_user_by_email(db, &email).await?;
 
         if password == user.password {
             let expiration = Utc::now()
@@ -118,7 +118,7 @@ impl AdminPermissionService for AdminRoleBasedPermissionService {
     ) -> Result<admin_users::Model, Box<dyn CustomGraphQLError>> {
         trace!("Fetching roles for user_id: {}", user_id);
 
-        let user_roles = get_user_roles(db, user_id).await?;
+        let user_roles = UserAdminServiceImpl::get_user_roles(db, user_id).await?;
         if user_roles.is_empty() {
             return Err(Box::new(AdminPermissionError::PermissionDenied("User has no roles assigned".to_string())) as Box<dyn CustomGraphQLError>);
         }
@@ -131,26 +131,8 @@ impl AdminPermissionService for AdminRoleBasedPermissionService {
             return Err(Box::new(AdminPermissionError::PermissionDenied("No permissions found for the user".to_string())));
         }
 
-        get_user_by_id(db, user_id).await
+        UserAdminServiceImpl::get_user_by_id(db, user_id).await
     }
-}
-
-// Helper functions to handle database queries
-async fn get_user_by_email(db: &DatabaseConnection, email: &str) -> Result<admin_users::Model, Box<dyn CustomGraphQLError>> {
-    admin_users::Entity::find()
-        .filter(admin_users::Column::Email.eq(email))
-        .one(db)
-        .await
-        .map_err(|e| Box::new(AdminDbError::DatabaseError(e.to_string())) as Box<dyn CustomGraphQLError>)?
-        .ok_or_else(|| Box::new(AdminUserAuthError::UserNotFound(email.to_string())) as Box<dyn CustomGraphQLError>)
-}
-
-async fn get_user_roles(db: &DatabaseConnection, user_id: Uuid) -> Result<Vec<admin_users_roles::Model>, Box<dyn CustomGraphQLError>> {
-    admin_users_roles::Entity::find()
-        .filter(admin_users_roles::Column::AdminUserId.eq(user_id))
-        .all(db)
-        .await
-        .map_err(|e| Box::new(AdminDbError::DatabaseError(e.to_string())) as Box<dyn CustomGraphQLError>)
 }
 
 async fn get_action_id_by_name(db: &DatabaseConnection, action: &str) -> Result<Uuid, Box<dyn CustomGraphQLError>> {
@@ -188,13 +170,5 @@ async fn get_permissions_for_roles(
         .all(db)
         .await
         .map_err(|e| Box::new(AdminDbError::DatabaseError(e.to_string())) as Box<dyn CustomGraphQLError>)
-}
-
-async fn get_user_by_id(db: &DatabaseConnection, user_id: Uuid) -> Result<admin_users::Model, Box<dyn CustomGraphQLError>> {
-    admin_users::Entity::find_by_id(user_id)
-        .one(db)
-        .await
-        .map_err(|e| Box::new(AdminDbError::DatabaseError(e.to_string())) as Box<dyn CustomGraphQLError>)?
-        .ok_or_else(|| Box::new(AdminUserAuthError::UserNotFound("User not found".to_string())) as Box<dyn CustomGraphQLError>)
 }
 
