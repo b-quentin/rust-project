@@ -15,7 +15,7 @@ use crate::internal::api::admin::users::{
         admin_roles_actions_entities_assignements, 
         admin_users, 
         admin_users_roles
-    }, services::{actions::{AdminActionService, AdminActionServiceImpl}, users::{UserAdminService, UserAdminServiceImpl}}
+    }, services::{actions::{AdminActionService, AdminActionServiceImpl}, entities::{AdminEntitiesService, AdminEntitiesServiceImpl}, users::{UserAdminService, UserAdminServiceImpl}}
 };
 
 #[async_trait]
@@ -123,7 +123,7 @@ impl AdminPermissionService for AdminRoleBasedPermissionService {
         }
 
         let action_id = AdminActionServiceImpl::get_action_id_by_name(db, action).await?;
-        let entity_id = get_entity_id_by_name(db, entities).await?;
+        let entity_id = AdminEntitiesServiceImpl::get_entity_id_by_name(db, entities).await?;
 
         let permissions = get_permissions_for_roles(db, &user_roles, action_id, entity_id).await?;
         if permissions.is_empty() {
@@ -132,16 +132,6 @@ impl AdminPermissionService for AdminRoleBasedPermissionService {
 
         UserAdminServiceImpl::get_user_by_id(db, user_id).await
     }
-}
-
-async fn get_entity_id_by_name(db: &DatabaseConnection, entity: &str) -> Result<Uuid, Box<dyn CustomGraphQLError>> {
-    admin_entities::Entity::find()
-        .filter(admin_entities::Column::Name.eq(entity))
-        .one(db)
-        .await
-        .map_err(|e| Box::new(AdminDbError::DatabaseError(e.to_string())) as Box<dyn CustomGraphQLError>)?
-        .ok_or_else(|| Box::new(AdminEntityError::NotFound("Entity not found".to_string())) as Box<dyn CustomGraphQLError>)
-        .map(|entity| entity.id)
 }
 
 async fn get_permissions_for_roles(
