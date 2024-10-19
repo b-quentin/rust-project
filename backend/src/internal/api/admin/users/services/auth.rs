@@ -8,15 +8,14 @@ use uuid::Uuid;
 use std::env;
 use crate::internal::api::admin::users::{
     errors::{
-        action::AdminActionError, auth::AuthTokenError, db::AdminDbError, entity::AdminEntityError, interface::CustomGraphQLError, permission::AdminPermissionError, user::AdminUserAuthError
+        auth::AuthTokenError, db::AdminDbError, entity::AdminEntityError, interface::CustomGraphQLError, permission::AdminPermissionError, user::AdminUserAuthError
     }, 
     models::{
-        admin_actions, 
         admin_entities, 
         admin_roles_actions_entities_assignements, 
         admin_users, 
         admin_users_roles
-    }, services::users::{UserAdminService, UserAdminServiceImpl}
+    }, services::{actions::{AdminActionService, AdminActionServiceImpl}, users::{UserAdminService, UserAdminServiceImpl}}
 };
 
 #[async_trait]
@@ -123,7 +122,7 @@ impl AdminPermissionService for AdminRoleBasedPermissionService {
             return Err(Box::new(AdminPermissionError::PermissionDenied("User has no roles assigned".to_string())) as Box<dyn CustomGraphQLError>);
         }
 
-        let action_id = get_action_id_by_name(db, action).await?;
+        let action_id = AdminActionServiceImpl::get_action_id_by_name(db, action).await?;
         let entity_id = get_entity_id_by_name(db, entities).await?;
 
         let permissions = get_permissions_for_roles(db, &user_roles, action_id, entity_id).await?;
@@ -133,16 +132,6 @@ impl AdminPermissionService for AdminRoleBasedPermissionService {
 
         UserAdminServiceImpl::get_user_by_id(db, user_id).await
     }
-}
-
-async fn get_action_id_by_name(db: &DatabaseConnection, action: &str) -> Result<Uuid, Box<dyn CustomGraphQLError>> {
-    admin_actions::Entity::find()
-        .filter(admin_actions::Column::Name.eq(action))
-        .one(db)
-        .await
-        .map_err(|e| Box::new(AdminDbError::DatabaseError(e.to_string())) as Box<dyn CustomGraphQLError>)?
-        .ok_or_else(|| Box::new(AdminActionError::NotFound("Action not found".to_string())) as Box<dyn CustomGraphQLError>)
-        .map(|action| action.id)
 }
 
 async fn get_entity_id_by_name(db: &DatabaseConnection, entity: &str) -> Result<Uuid, Box<dyn CustomGraphQLError>> {
