@@ -9,7 +9,11 @@ use std::env;
 use crate::internal::api::admin::users::{
     errors::{
         auth::AuthTokenError, interface::CustomGraphQLError, user::AdminUserAuthError
-    }, services::users::{UserAdminService, UserAdminServiceImpl},
+    }, 
+    services::users::{
+        AdminUserService,
+        AdminUserServiceImpl
+    },
 };
 
 #[async_trait]
@@ -67,7 +71,7 @@ impl TokenService for JwtTokenService {
     async fn generate_token(db: &DatabaseConnection, email: String, password: String) -> Result<String, Box<dyn CustomGraphQLError>> {
         trace!("Generating token for user with email: '{}'", email);
 
-        let user = UserAdminServiceImpl::get_user_by_email(db, &email).await?;
+        let user = AdminUserServiceImpl::get_user_by_email(db, &email).await?;
 
         if password == user.password {
             let expiration = Utc::now()

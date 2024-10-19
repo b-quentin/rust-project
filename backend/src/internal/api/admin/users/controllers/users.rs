@@ -4,7 +4,7 @@ use sea_orm::DatabaseConnection;
 use async_graphql::{Context, Object, SimpleObject};
 use uuid::Uuid;
 
-use crate::internal::api::admin::users::{errors::{db::AdminDbError, interface::CustomGraphQLError}, services::{auth::{AdminPermissionService, AdminRoleBasedPermissionService, JwtTokenService, TokenService}, users::{UserAdminService, UserAdminServiceImpl}}};
+use crate::internal::api::admin::users::{errors::{db::AdminDbError, interface::CustomGraphQLError}, services::{auth::{ JwtTokenService, TokenService}, users::{AdminUserService, AdminUserServiceImpl}}};
 
 #[derive(SimpleObject)]
 pub struct UserAdmin {
@@ -31,7 +31,7 @@ impl AdminUserQuery {
             }
         };
 
-        let _ = match AdminRoleBasedPermissionService::get_user_permissions(ctx.data::<Arc<DatabaseConnection>>().unwrap().as_ref(), claims.sub, "can_read", "Pages::AdminHome").await {
+        let _ = match AdminUserServiceImpl::get_user_permissions(ctx.data::<Arc<DatabaseConnection>>().unwrap().as_ref(), claims.sub, "can_read", "Pages::AdminHome").await {
             Ok(_) => {
                 trace!("users: User {:?} has permission to read admin home", claims.sub);
             },
@@ -52,7 +52,7 @@ impl AdminUserQuery {
             }
         };
 
-        match UserAdminServiceImpl::get_all_users(db.as_ref()).await {
+        match AdminUserServiceImpl::get_all_users(db.as_ref()).await {
             Ok(users) => {
                 trace!("users: Users found: {:?}", users);
                 Ok(users.into_iter().map(|u| UserAdmin {
