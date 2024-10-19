@@ -1,21 +1,15 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, DecodingKey, Validation, encode, EncodingKey, Header};
-use sea_orm::{DatabaseConnection, EntityTrait, ColumnTrait, QueryFilter};
+use sea_orm::DatabaseConnection;
 use async_trait::async_trait;
 use log::trace;
 use uuid::Uuid;
 use std::env;
 use crate::internal::api::admin::users::{
     errors::{
-        auth::AuthTokenError, db::AdminDbError, entity::AdminEntityError, interface::CustomGraphQLError, permission::AdminPermissionError, user::AdminUserAuthError
-    }, 
-    models::{
-        admin_entities, 
-        admin_roles_actions_entities_assignements, 
-        admin_users, 
-        admin_users_roles
-    }, services::{actions::{AdminActionService, AdminActionServiceImpl}, entities::{AdminEntitiesService, AdminEntitiesServiceImpl}, users::{UserAdminService, UserAdminServiceImpl}}
+        auth::AuthTokenError, interface::CustomGraphQLError, user::AdminUserAuthError
+    }, services::users::{UserAdminService, UserAdminServiceImpl},
 };
 
 #[async_trait]
@@ -99,55 +93,3 @@ impl TokenService for JwtTokenService {
         }
     }
 }
-
-#[async_trait]
-pub trait AdminPermissionService {
-    async fn get_user_permissions<'a>(db: &'a DatabaseConnection, user_id: Uuid, action: &'a str, entities: &'a str) -> Result<admin_users::Model, Box<dyn CustomGraphQLError>>;
-}
-
-pub struct AdminRoleBasedPermissionService;
-
-#[async_trait]
-impl AdminPermissionService for AdminRoleBasedPermissionService {
-    async fn get_user_permissions<'a>(
-        db: &'a DatabaseConnection,
-        user_id: Uuid,
-        action: &'a str,
-        entities: &'a str,
-    ) -> Result<admin_users::Model, Box<dyn CustomGraphQLError>> {
-        trace!("Fetching roles for user_id: {}", user_id);
-
-        let user_roles = UserAdminServiceImpl::get_user_roles(db, user_id).await?;
-        if user_roles.is_empty() {
-            return Err(Box::new(AdminPermissionError::PermissionDenied("User has no roles assigned".to_string())) as Box<dyn CustomGraphQLError>);
-        }
-
-        let action_id = AdminActionServiceImpl::get_action_id_by_name(db, action).await?;
-        let entity_id = AdminEntitiesServiceImpl::get_entity_id_by_name(db, entities).await?;
-
-        let permissions = get_permissions_for_roles(db, &user_roles, action_id, entity_id).await?;
-        if permissions.is_empty() {
-            return Err(Box::new(AdminPermissionError::PermissionDenied("No permissions found for the user".to_string())));
-        }
-
-        UserAdminServiceImpl::get_user_by_id(db, user_id).await
-    }
-}
-
-async fn get_permissions_for_roles(
-    db: &DatabaseConnection, 
-    user_roles: &[admin_users_roles::Model], 
-    action_id: Uuid, 
-    entity_id: Uuid,
-) -> Result<Vec<admin_roles_actions_entities_assignements::Model>, Box<dyn CustomGraphQLError>> {
-    admin_roles_actions_entities_assignements::Entity::find()
-        .filter(admin_roles_actions_entities_assignements::Column::RoleId.is_in(
-            user_roles.iter().map(|role| role.role_admin_id),
-        ))
-        .filter(admin_roles_actions_entities_assignements::Column::PermissionId.eq(action_id))
-        .filter(admin_roles_actions_entities_assignements::Column::EntityId.eq(entity_id))
-        .all(db)
-        .await
-        .map_err(|e| Box::new(AdminDbError::DatabaseError(e.to_string())) as Box<dyn CustomGraphQLError>)
-}
-
