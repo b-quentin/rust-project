@@ -1,12 +1,22 @@
+use async_graphql::InputObject;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter};
 use async_trait::async_trait;
 use log::trace;
 use uuid::Uuid;
 use crate::internal::api::admin::users::{errors::{db::AdminDbError, interface::CustomGraphQLError, permission::AdminPermissionError, user::AdminUserAuthError}, models::{admin_users, admin_users_roles}, services::{actions::{AdminActionService, AdminActionServiceImpl}, entities::{AdminEntitiesService, AdminEntitiesServiceImpl}, permissions::{AdminPermissionService, AdminPermissionServiceImpl}}};
 
+#[derive(InputObject)]
+pub struct UserFilter {
+    pub id : Option<Uuid>,
+    pub email: Option<String>,
+    pub username: Option<String>,
+    pub first_name: Option<String>,
+    pub last_name: Option<String>,
+}
+
 #[async_trait]
 pub trait AdminUserService {
-    async fn get_all_users(db: &DatabaseConnection) -> Result<Vec<admin_users::Model>, Box<dyn CustomGraphQLError>>;
+    async fn get_all_users(db: &DatabaseConnection, filter: Option<UserFilter>) -> Result<Vec<admin_users::Model>, Box<dyn CustomGraphQLError>>;
     async fn get_user_by_id(db: &DatabaseConnection, user_id: Uuid) -> Result<admin_users::Model, Box<dyn CustomGraphQLError>>;
     async fn get_user_by_email(db: &DatabaseConnection, email: &str) -> Result<admin_users::Model, Box<dyn CustomGraphQLError>>;
     async fn get_user_roles(db: &DatabaseConnection, user_id: Uuid) -> Result<Vec<admin_users_roles::Model>, Box<dyn CustomGraphQLError>>;
@@ -30,18 +40,36 @@ pub struct AdminUserServiceImpl;
 
 #[async_trait]
 impl AdminUserService for AdminUserServiceImpl {
-    async fn get_all_users(db: &DatabaseConnection) -> Result<Vec<admin_users::Model>, Box<dyn CustomGraphQLError>> {
+    async fn get_all_users(db: &DatabaseConnection, filter: Option<UserFilter>) -> Result<Vec<admin_users::Model>, Box<dyn CustomGraphQLError>> {
         trace!("Fetching all users");
 
-        match admin_users::Entity::find().all(db).await {
+        let mut query = admin_users::Entity::find();
+
+        if let Some(filter) = filter {
+            if let Some(id) = filter.id {
+                query = query.filter(admin_users::Column::Id.eq(id));
+            }
+            if let Some(email) = filter.email {
+                query = query.filter(admin_users::Column::Email.eq(email));
+            }
+            if let Some(username) = filter.username {
+                query = query.filter(admin_users::Column::Username.eq(username));
+            }
+            if let Some(first_name) = filter.first_name {
+                query = query.filter(admin_users::Column::FirstName.eq(first_name));
+            }
+            if let Some(last_name) = filter.last_name {
+                query = query.filter(admin_users::Column::LastName.eq(last_name));
+            }
+        }
+
+         match query.all(db).await {
             Ok(users) => {
                 trace!("Users found: {:?}", users);
                 Ok(users)
-             },
-             Err(e) => {
-                 Err(Box::new(AdminDbError::DatabaseError(e.to_string())) as Box<dyn CustomGraphQLError>)
-             }
-         }
+            },
+            Err(e) => Err(Box::new(AdminDbError::DatabaseError(e.to_string())) as Box<dyn CustomGraphQLError>),
+        }
     }
 
     async fn get_user_by_id(db: &DatabaseConnection, user_id: Uuid) -> Result<admin_users::Model, Box<dyn CustomGraphQLError>> {
