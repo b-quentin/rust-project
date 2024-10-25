@@ -31,12 +31,21 @@ impl AdminUserQuery {
             }
         };
 
-        let _ = match AdminUserServiceImpl::get_user_permissions(ctx.data::<Arc<DatabaseConnection>>().unwrap().as_ref(), claims.sub, "can_read", "Pages::AdminHome").await {
+        let _ = match AdminUserServiceImpl::get_user_permissions_from_role(ctx.data::<Arc<DatabaseConnection>>().unwrap().as_ref(), claims.sub, "can_read", "Pages::AdminHome").await {
             Ok(_) => {
                 trace!("users: User {:?} has permission to read admin home", claims.sub);
             },
-            Err(e) => {
-                return Err(e.new());
+            Err(_) => {
+                trace!("users: User {:?} doesn't have permission from role, checking user permissions", claims.sub);
+                match AdminUserServiceImpl::get_user_permissions_from_user(ctx.data::<Arc<DatabaseConnection>>().unwrap().as_ref(), claims.sub, "can_read", "Pages::AdminHome").await {
+                    Ok(_) => {
+                        trace!("users: User {:?} has permission to read admin home", claims.sub);
+                    },
+                    Err(e) => {
+                        trace!("users: User {:?} doesn't have permission to read admin home", claims.sub);
+                        return Err(e.new());
+                    }
+                }
             }
         };
 

@@ -24,6 +24,7 @@ impl MigratorTrait for Migrator {
             Box::new(admin::permissions::Migration),
             Box::new(admin::admin_entities::Migration),
             Box::new(admin::roles_permissions_assignements_entities::Migration),
+            Box::new(admin::users_permissions_assignements_entities::Migration),
 
             Box::new(admin::data_seed::add_roles::Migration),
             Box::new(admin::data_seed::add_permissions::Migration),
@@ -39,6 +40,7 @@ impl MigratorTrait for Migrator {
                 migrations.push(Box::new(admin::data_seed::development::add_admin_users::Migration));
                 migrations.push(Box::new(admin::data_seed::development::add_users_roles_assignements::Migration));
                 migrations.push(Box::new(admin::data_seed::development::add_roles_permissions_assignements::Migration));
+                migrations.push(Box::new(admin::data_seed::development::add_users_permissions_assignements::Migration));
             },
             "production" => {
                 println!("Production environment, using default migrations");
