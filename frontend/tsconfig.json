@@ -19,6 +19,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
+      "@lib/*": ["./src/lib/*"],
       "@styles" : [ "./src/app/globals.css" ],
       "@components/*" : [ "./src/components/*" ]
     }
