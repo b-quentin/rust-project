@@ -4,6 +4,7 @@ import { useQuery, gql } from "@apollo/client";
 import client from "@/lib/graphql/client";
 import { ColumnDef } from "@tanstack/react-table";
 import { MoreHorizontal } from "lucide-react";
+import { useRouter } from 'next/navigation';
 
 import { DataTable } from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { useEffect, useState } from "react";
+import { getCookie } from "@/lib/auth/cookies";
 
 const GET_USERS = gql`
   query users($token: String!) {
@@ -96,20 +98,18 @@ const columns: ColumnDef<User>[] = [
   },
 ];
 
-function getCookie(name: string): string | null {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
-  return null;
-}
-
 export default function AdminUsersPage() {
+  const router = useRouter();
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
     const token = getCookie("auth_token");
-    setToken(token);
-  }, []);
+    if (!token) {
+      router.push('/login'); // Redirige vers la page de connexion si le token n'est pas présent
+    } else {
+      setToken(token);
+    }
+  }, [router]);
 
   const { loading, error, data } = useQuery(GET_USERS, {
     client,
