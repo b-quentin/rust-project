@@ -52,18 +52,18 @@ impl AuthAdminQuery {
 
         let has_permission = match AdminUserServiceImpl::get_user_permissions_from_role(db.as_ref(), claims.sub, "can_read", &page).await {
             Ok(_) => {
-                trace!("users: User {:?} has permission to read admin home", claims.sub);
+                trace!("users: User {:?} has permission to read {:?}", claims.sub, page);
                 Ok(true)
             },
             Err(_) => {
                 trace!("users: User {:?} doesn't have permission from role, checking user permissions", claims.sub);
                 match AdminUserServiceImpl::get_user_permissions_from_user(db.as_ref(), claims.sub, "can_read", &page).await {
                     Ok(_) => {
-                        trace!("users: User {:?} has permission to read admin home", claims.sub);
+                        trace!("users: User {:?} has permission to read {:?}", claims.sub, page);
                         Ok(true)
                     },
                     Err(e) => {
-                        trace!("users: User {:?} doesn't have permission to read admin home", claims.sub);
+                        trace!("users: User {:?} doesn't have permission to read {:?}", claims.sub, page);
                         return Err(e.new());
                     }
                 }

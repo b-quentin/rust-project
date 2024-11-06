@@ -1,9 +1,13 @@
-import * as React from "react"
-import { ThemeProvider } from "@components/theme-provider"
+import * as React from "react";
+import { ThemeProvider } from "@components/theme-provider";
 import ModeToggle from "@components/mode-toggle";
-import "@styles"
+import "@styles";
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <>
       <html lang="en" suppressHydrationWarning>
@@ -15,17 +19,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             enableSystem
             disableTransitionOnChange
           >
-            <header className="flex justify-end p-4">
-              {/* Add the mode toggle button to your header */}
-              <ModeToggle />
-            </header>
             {children}
           </ThemeProvider>
-
-
         </body>
       </html>
     </>
-  )
+  );
 }
-

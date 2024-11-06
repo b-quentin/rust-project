@@ -40,6 +40,7 @@ async function checkAccessWithRustBackend(
   req: NextRequest,
 ): Promise<boolean> {
   try {
+    console.log(page);
     const { data } = await client.query({
       query: GET_ACCESS_QUERY,
       variables: { token, page },
