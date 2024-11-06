@@ -26,7 +26,8 @@ impl MigrationTrait for Migration {
             Uuid::parse_str("123e4567-e89b-12d3-a456-426614174105").unwrap(), // can_upload
             Uuid::parse_str("123e4567-e89b-12d3-a456-426614174106").unwrap(), // can_download
         ];
-        let entity_id = Uuid::parse_str("123e4567-e89b-12d3-a456-426614174110").unwrap();
+        let entity_id_admin_dashboard = Uuid::parse_str("123e4567-e89b-12d3-a456-426614174110").unwrap();
+        let entity_id_admin_dashboard_users = Uuid::parse_str("123e4567-e89b-12d3-a456-426614174111").unwrap();
 
         for permission_id in permission_ids {
             let insert_stmt = Query::insert()
@@ -39,12 +40,28 @@ impl MigrationTrait for Migration {
                 .values_panic([
                     role_id.into(),
                     permission_id.into(),
-                    entity_id.into(),
+                    entity_id_admin_dashboard.into(),
+                ])
+                .to_owned();
+
+            let insert_stmt_users = Query::insert()
+                .into_table(AdminRolesPermissionsEntities::Table)   
+                .columns([
+                    AdminRolesPermissionsEntities::RoleId,
+                    AdminRolesPermissionsEntities::PermissionId,
+                    AdminRolesPermissionsEntities::EntityId,
+                ])
+                .values_panic([
+                    role_id.into(),
+                    permission_id.into(),
+                    entity_id_admin_dashboard_users.into(),
                 ])
                 .to_owned();
 
             manager.exec_stmt(insert_stmt).await?;
+            manager.exec_stmt(insert_stmt_users).await?;
         }
+
         Ok(())
     }
 

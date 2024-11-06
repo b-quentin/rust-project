@@ -43,13 +43,13 @@ impl AdminUserQuery {
             }
         };
 
-        let _ = match AdminUserServiceImpl::get_user_permissions_from_role(db.as_ref(), claims.sub, "can_read", "/admin").await {
+        let _ = match AdminUserServiceImpl::get_user_permissions_from_role(db.as_ref(), claims.sub, "can_read", "/admin/dashboard/users").await {
             Ok(_) => {
                 trace!("users: User {:?} has permission to read admin home", claims.sub);
             },
             Err(_) => {
                 trace!("users: User {:?} doesn't have permission from role, checking user permissions", claims.sub);
-                match AdminUserServiceImpl::get_user_permissions_from_user(db.as_ref(), claims.sub, "can_read", "/admin").await {
+                match AdminUserServiceImpl::get_user_permissions_from_user(db.as_ref(), claims.sub, "can_read", "/admin/dashboard/users").await {
                     Ok(_) => {
                         trace!("users: User {:?} has permission to read admin home", claims.sub);
                     },
