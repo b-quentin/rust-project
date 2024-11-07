@@ -16,9 +16,11 @@ sea-orm = { version = "1.1.0-rc.1", features = ["sqlx-postgres", "runtime-tokio-
 # Loads environment variables from a .env file.
 dotenv = "0.15.0"
 # Provides a logger configured via environment variables.
-env_logger = "0.10"
+env_logger = "0.11.5"
 # A lightweight logging facade for producing log messages.
 log = "0.4"
+# A library for hashing passwords.
+bcrypt = "0.15.1"
 
 [dependencies.sea-orm-migration]
 version = "1.1.0-rc.1"

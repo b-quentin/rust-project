@@ -39,7 +39,10 @@ uuid = { version = "1", features = ["serde", "v4"] }
 # Library for encoding and decoding JSON Web Tokens (JWTs).
 jsonwebtoken = "9"
 thiserror = "1.0"
+# A library for parsing, formatting, and calculating with dates and times.
 chrono = "0.4"
+# A library for hashing passwords.
+bcrypt = "0.15.1"
 
 [[bin]]
 name = "app"

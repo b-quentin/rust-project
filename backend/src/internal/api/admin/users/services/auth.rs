@@ -15,6 +15,7 @@ use crate::internal::api::admin::users::{
         AdminUserServiceImpl
     },
 };
+use bcrypt::verify;
 
 #[async_trait]
 pub trait TokenService {
@@ -73,27 +74,32 @@ impl TokenService for JwtTokenService {
 
         let user = AdminUserServiceImpl::get_user_by_email(db, &email).await?;
 
-        if password == user.password {
-            let expiration = Utc::now()
-                .checked_add_signed(Duration::seconds(3600))
-                .ok_or_else(|| Box::new(AdminUserAuthError::UnexpectedError("Failed to create expiration timestamp".to_string())) as Box<dyn CustomGraphQLError>)?
-                .timestamp();
+        match verify(&password, &user.password) {
+            Ok(is_valid) => {
+                if !is_valid {
+                    return Err(Box::new(AdminUserAuthError::InvalidPassword));
+                }
 
-            let claims = Claims { 
-                sub: user.id.clone(), 
-                exp: expiration as usize 
-            };
+                let expiration = Utc::now()
+                    .checked_add_signed(Duration::seconds(3600))
+                    .ok_or_else(|| Box::new(AdminUserAuthError::UnexpectedError("Failed to create expiration timestamp".to_string())) as Box<dyn CustomGraphQLError>)?
+                    .timestamp();
 
-            let secret = get_jwt_secret();
-            let token = encode(
-                &Header::default(), 
-                &claims, 
-                &EncodingKey::from_secret(secret.as_ref())
-            ).map_err(|e| Box::new(AuthTokenError::JwtError(e)) as Box<dyn CustomGraphQLError>)?;
+                let claims = Claims { 
+                    sub: user.id.clone(), 
+                    exp: expiration as usize 
+                };
 
-            Ok(token)
-        } else {
-            Err(Box::new(AdminUserAuthError::InvalidPassword))
+                let secret = get_jwt_secret();
+                let token = encode(
+                    &Header::default(), 
+                    &claims, 
+                    &EncodingKey::from_secret(secret.as_ref())
+                ).map_err(|e| Box::new(AuthTokenError::JwtError(e)) as Box<dyn CustomGraphQLError>)?;
+
+                Ok(token)
+            },
+            Err(_) => Err(Box::new(AdminUserAuthError::UnexpectedError("Erreur lors de la vérification du mot de passe".to_string())))
         }
     }
 }
