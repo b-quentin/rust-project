@@ -10,18 +10,18 @@ actix-web = "4.0"
 # Actix runtime support.
 actix-rt = "2.5"
 # for cors
-actix-cors = "0.6" 
+actix-cors = "0.7" 
 # Integration for async-graphql with actix-web.
-async-graphql-actix-web = "5"
+async-graphql-actix-web = "7.0.11"
 # Asynchronous GraphQL implementation for Rust, with dynamic schema and UUID support.
-async-graphql = { version = "5.0", features = ["dynamic-schema", "uuid"] }
+async-graphql = { version = "7.0.11", features = ["dynamic-schema", "uuid"] }
 # Allows the definition of async functions in traits.
 async-trait = "0.1.50"
 # Loads environment variables from a .env file.
 dotenv = "0.15.0"
 
 # Provides a logger configured via environment variables.
-env_logger = "0.10"
+env_logger = "0.11.5"
 # A lightweight logging facade for producing log messages.
 log = "0.4"
 # An ORM for Rust, with support for PostgreSQL and asynchronous runtime.
@@ -38,7 +38,7 @@ tokio = { version = "1", features = ["full"] }
 uuid = { version = "1", features = ["serde", "v4"] }
 # Library for encoding and decoding JSON Web Tokens (JWTs).
 jsonwebtoken = "9"
-thiserror = "1.0"
+thiserror = "2.0"
 # A library for parsing, formatting, and calculating with dates and times.
 chrono = "0.4"
 # A library for hashing passwords.
