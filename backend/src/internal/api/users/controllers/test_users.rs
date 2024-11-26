@@ -8,7 +8,7 @@ use async_graphql::{
 use sea_orm::{sqlx::types::chrono::Utc, DatabaseBackend, DbErr, MockDatabase, MockExecResult};
 use uuid::Uuid;
 use crate::internal::api::users::{
-    controllers::graphql::{users::{CreateUserInput, UpdateUserInput}, MutationRoot, QueryRoot},
+    controllers::{users::{CreateUserInput, UpdateUserInput}, UserMutation, UserQuery},
     models::users
 };
 
@@ -36,7 +36,7 @@ async fn test_user_found() {
     let db = Arc::new(db);
 
     // Create a schema with the mock database in context
-    let schema = Schema::build(QueryRoot::default(), EmptyMutation, EmptySubscription)
+    let schema = Schema::build(UserQuery::default(), EmptyMutation, EmptySubscription)
         .data(db)
         .finish();
 
@@ -72,7 +72,7 @@ async fn test_user_not_found() {
     let db = Arc::new(db);
 
     // Create a schema with the mock database in context
-    let schema = Schema::build(QueryRoot::default(), EmptyMutation, EmptySubscription)
+    let schema = Schema::build(UserQuery::default(), EmptyMutation, EmptySubscription)
         .data(db)
         .finish();
 
@@ -106,7 +106,7 @@ async fn test_user_db_error() {
     let db = Arc::new(db);
 
     // Create a schema with the mock database in context
-    let schema = Schema::build(QueryRoot::default(), EmptyMutation, EmptySubscription)
+    let schema = Schema::build(UserQuery::default(), EmptyMutation, EmptySubscription)
         .data(db)
         .finish();
 
@@ -162,7 +162,7 @@ async fn test_users_found() {
     let db = Arc::new(db);
 
     // Create a schema with the mock database in context
-    let schema = Schema::build(QueryRoot::default(), EmptyMutation, EmptySubscription)
+    let schema = Schema::build(UserQuery::default(), EmptyMutation, EmptySubscription)
         .data(db)
         .finish();
 
@@ -203,7 +203,7 @@ async fn test_users_not_found() {
     let db = Arc::new(db);
 
     // Create a schema with the mock database in context
-    let schema = Schema::build(QueryRoot::default(), EmptyMutation, EmptySubscription)
+    let schema = Schema::build(UserQuery::default(), EmptyMutation, EmptySubscription)
         .data(db)
         .finish();
 
@@ -239,7 +239,7 @@ async fn test_users_db_error() {
     let db = Arc::new(db);
 
     // Create a schema with the mock database in context
-    let schema = Schema::build(QueryRoot::default(), EmptyMutation, EmptySubscription)
+    let schema = Schema::build(UserQuery::default(), EmptyMutation, EmptySubscription)
         .data(db)
         .finish();
 
@@ -303,7 +303,7 @@ async fn test_create_user_success() {
     let db = Arc::new(db);
 
     // Create a schema with the mock database in context
-    let schema = Schema::build(QueryRoot::default(), MutationRoot::default(), EmptySubscription)
+    let schema = Schema::build(UserQuery::default(), UserMutation::default(), EmptySubscription)
         .data(db)
         .finish();
 
@@ -362,7 +362,7 @@ async fn test_create_user_db_error() {
     let db = Arc::new(db);
 
     // Create a schema with the mock database in context
-    let schema = Schema::build(QueryRoot::default(), MutationRoot::default(), EmptySubscription)
+    let schema = Schema::build(UserQuery::default(), UserMutation::default(), EmptySubscription)
         .data(db)
         .finish();
 
@@ -439,7 +439,7 @@ async fn test_update_user_success() {
     let db = Arc::new(db);
 
     // Create a schema with the mock database in context
-    let schema = Schema::build(QueryRoot::default(), MutationRoot, EmptySubscription)
+    let schema = Schema::build(UserQuery::default(), UserMutation, EmptySubscription)
         .data(db)
         .finish();
 
@@ -488,7 +488,7 @@ async fn test_update_user_not_found() {
     let db = Arc::new(db);
 
     // Create a schema with the mock database in context
-    let schema = Schema::build(QueryRoot::default(), MutationRoot, EmptySubscription)
+    let schema = Schema::build(UserQuery::default(), UserMutation, EmptySubscription)
         .data(db)
         .finish();
 
@@ -544,7 +544,7 @@ async fn test_update_user_db_error() {
     let db = Arc::new(db);
 
     // Create a schema with the mock database in context
-    let schema = Schema::build(QueryRoot::default(), MutationRoot, EmptySubscription)
+    let schema = Schema::build(UserQuery::default(), UserMutation, EmptySubscription)
         .data(db)
         .finish();
 
@@ -585,7 +585,7 @@ async fn test_delete_user_success() {
     let db = Arc::new(db);
 
     // Create a schema with the mock database in context
-    let schema = Schema::build(QueryRoot::default(), MutationRoot::default(), EmptySubscription)
+    let schema = Schema::build(UserQuery::default(), UserMutation::default(), EmptySubscription)
         .data(db)
         .finish();
 
@@ -624,7 +624,7 @@ async fn test_delete_user_not_found() {
     let db = Arc::new(db);
 
     // Create a schema with the mock database in context
-    let schema = Schema::build(QueryRoot::default(), MutationRoot::default(), EmptySubscription)
+    let schema = Schema::build(UserQuery::default(), UserMutation::default(), EmptySubscription)
         .data(db)
         .finish();
 
@@ -660,7 +660,7 @@ async fn test_delete_user_db_error() {
     let db = Arc::new(db);
 
     // Create a schema with the mock database in context
-    let schema = Schema::build(QueryRoot::default(), MutationRoot::default(), EmptySubscription)
+    let schema = Schema::build(UserQuery::default(), UserMutation::default(), EmptySubscription)
         .data(db)
         .finish();
 
