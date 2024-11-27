@@ -1,5 +1,6 @@
 import { ApolloClient, ApolloError, InMemoryCache } from '@apollo/client';
 import { Result, Ok, Err } from 'oxide.ts';
+import { StatusCode } from 'status-code-enum'
 import { Logger } from "tslog";
 
 const logs = new Logger({ name: "GraphQL Client" });
@@ -24,7 +25,7 @@ export async function executeQuery<T>(query: any, variables: any = {}): Promise<
   }
 }
 
-export async function executeMutation<T>(mutation: any, variables: any = {}): Promise<Result<T, { message: string }>> {
+export async function executeMutation<T>(mutation: any, variables: any = {}): Promise<Result<T, { code: StatusCode, message: string }>> {
   try {
     const result = await client.mutate<T>({ mutation, variables });
 
@@ -32,7 +33,7 @@ export async function executeMutation<T>(mutation: any, variables: any = {}): Pr
 
     if (!result.data) {
       logs.error("No data returned from mutation");
-      return Err({ message: "No data returned from mutation" });
+      return Err({ code: StatusCode.ClientErrorNotFound, message: "No data returned from mutation" });
     }
 
     return Ok(result.data);
@@ -40,25 +41,18 @@ export async function executeMutation<T>(mutation: any, variables: any = {}): Pr
     logs.error("GraphQL mutation error structure:", JSON.stringify(error, null, 2));
 
     if (error instanceof ApolloError) {
-      const errorMessage = error.message || "GraphQL mutation failed";
-
       const extensions = error.graphQLErrors[0]?.extensions;
       if (extensions) {
-        logs.info("GraphQL error extensions:", extensions);
+        return Err({ code: extensions.code as StatusCode, message: extensions.message as string });
       }
 
-      if (errorMessage.includes("The requested user does not exist")) {
-        logs.error("User error:", errorMessage);
-        return Err({ message: errorMessage });
-      }
+      logs.error("GraphQL mutation error:", error);
 
-      logs.error("GraphQL mutation error:", errorMessage);
-      logs.trace("GraphQL mutation error details:", error);
-      return Err({ message: errorMessage });
+      return Err({ code: StatusCode.ServerErrorInternal, message: "Unexpected error during GraphQL mutation: " + error });
     } else {
-      logs.error("Unexpected error during GraphQL mutation");
-      logs.trace("Unexpected error details:", error);
-      return Err({ message: "Unexpected error during GraphQL mutation" });
+      logs.error("Unexpected error details:", error);
+
+      return Err({ code: StatusCode.ServerErrorInternal, message: "Unexpected error during GraphQL mutation" });
     }
   }
 }
