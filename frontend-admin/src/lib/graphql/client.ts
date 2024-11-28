@@ -2,8 +2,12 @@ import { ApolloClient, ApolloError, InMemoryCache } from '@apollo/client';
 import { Result, Ok, Err } from 'oxide.ts';
 import { StatusCode } from 'status-code-enum'
 import { Logger } from "tslog";
+import { logLevel } from "@/lib/process.env";
 
-const logs = new Logger({ name: "GraphQL Client" });
+const logs = new Logger({
+  name: "GraphQL Client",
+  minLevel: logLevel,
+});
 
 const client = new ApolloClient({
   uri: 'http://127.0.0.1:8080/graphql',
@@ -38,11 +42,12 @@ export async function executeMutation<T>(mutation: any, variables: any = {}): Pr
 
     return Ok(result.data);
   } catch (error) {
-    logs.error("GraphQL mutation error structure:", JSON.stringify(error, null, 2));
-
     if (error instanceof ApolloError) {
       const extensions = error.graphQLErrors[0]?.extensions;
+
       if (extensions) {
+        logs.error("GraphQL mutation error:", error);
+
         return Err({ code: extensions.code as StatusCode, message: extensions.message as string });
       }
 

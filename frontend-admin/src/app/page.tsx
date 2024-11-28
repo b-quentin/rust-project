@@ -1,9 +1,9 @@
-import user from "../data/user";
+import user from "../data/users/generateToken";
 import { match } from "oxide.ts";
 
 export default function Home() {
   async function handleGenerateToken() {
-    match(await user.generateToken({ email: "test@test.com", password: "test" }), {
+    match(await user.generateToken({ email: "admin1@example.com", password: "hashedpassword1" }), {
       Ok: (value) => {
         console.log("Token generated successfully:", value);
       },

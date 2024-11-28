@@ -75,11 +75,7 @@ impl TokenService for JwtTokenService {
         let user = AdminUserServiceImpl::get_user_by_email(db, &email).await?;
 
         match verify(&password, &user.password) {
-            Ok(is_valid) => {
-                if !is_valid {
-                    return Err(Box::new(AdminUserAuthError::InvalidPassword));
-                }
-
+            Ok(_) => {
                 let expiration = Utc::now()
                     .checked_add_signed(Duration::seconds(3600))
                     .ok_or_else(|| Box::new(AdminUserAuthError::UnexpectedError("Failed to create expiration timestamp".to_string())) as Box<dyn CustomGraphQLError>)?
@@ -99,7 +95,13 @@ impl TokenService for JwtTokenService {
 
                 Ok(token)
             },
-            Err(_) => Err(Box::new(AdminUserAuthError::UnexpectedError("Erreur lors de la vérification du mot de passe".to_string())))
+            Err(_) => {
+                trace!("Invalid password for user with email: '{}'", email);
+                trace!("Password: '{}'", password);
+                trace!("User: {:?}", user);
+
+                Err(Box::new(AdminUserAuthError::InvalidPassword))
+            }
         }
     }
 }
