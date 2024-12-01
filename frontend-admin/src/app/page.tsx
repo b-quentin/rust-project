@@ -1,23 +1,12 @@
-import user from "../data/users/generateToken";
-import { match } from "oxide.ts";
+'use client';
+import React from 'react';
+import LoginForm from '@/components/LoginForm';
 
-export default function Home() {
-  async function handleGenerateToken() {
-    match(await user.generateToken({ email: "admin1@example.com", password: "hashedpassword1" }), {
-      Ok: (value) => {
-        console.log("Token generated successfully:", value);
-      },
-      Err: (error) => {
-        console.error("Error generating token:", error.message);
-      }
-    });
-  }
-
-  handleGenerateToken();
-
+export default function App() {
   return (
     <div>
-      <h1>Hello World</h1>
+      <h1>Bienvenue</h1>
+      <LoginForm />
     </div>
   );
 }

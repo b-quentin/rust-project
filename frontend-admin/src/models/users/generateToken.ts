@@ -25,7 +25,7 @@ const generateTokenMutation = gql`
   }
 `;
 
-async function generateToken(input: GenerateTokenInput): Promise<Result<GenerateTokenResponse, { code: StatusCode; message: string }>> {
+export async function generateToken(input: GenerateTokenInput): Promise<Result<GenerateTokenResponse, { code: StatusCode; message: string }>> {
   return executeMutation<GenerateTokenResponse>(generateTokenMutation, { input }).then((result) =>
     match(result, {
       Ok: (data) => {
@@ -40,5 +40,3 @@ async function generateToken(input: GenerateTokenInput): Promise<Result<Generate
     })
   );
 }
-
-export default { generateToken };
