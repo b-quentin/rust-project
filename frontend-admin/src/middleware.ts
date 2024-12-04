@@ -37,25 +37,29 @@ export async function middleware(req: NextRequest) {
       NextResponse.next();
     });
 
-  match(token, {
-    Some: async (token) => {
-      logs.info("Token found, checking access");
-      match(await checkAccessWithRustBackend(token, req.nextUrl.pathname), {
-        Ok: () => {
-          logs.info("Access granted, continuing to the requested page");
-          NextResponse.next();
+    const tokenMatch = match(token, {
+      Some: (token) => token,
+      None: () => {
+        logs.info("No token found, redirecting to login page");
+        redirectToLoginWithParams(req);
+        return null;
+      },
+    });
+  
+    if (!tokenMatch) return;
+  
+    logs.info("Token found, checking access");
+  
+    match(await checkAccessWithRustBackend(tokenMatch, req.nextUrl.pathname), {
+      Ok: () => {
+        logs.info("Access granted, continuing to the requested page");
+        NextResponse.next();
       },
       Err: () => {
-            logs.info("Access denied, redirecting to login page");
-            redirectToLoginWithParams(req);
-          },
-        });
+        logs.info("Access denied, redirecting to login page");
+        redirectToLoginWithParams(req);
       },
-    None: () => {
-      logs.info("No token found, redirecting to login page");
-      redirectToLoginWithParams(req);
-    },
-  });
+    });
 
 
 }
