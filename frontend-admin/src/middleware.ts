@@ -23,15 +23,10 @@ export async function middleware(req: NextRequest) {
     .with(P.string, () => Some(req.cookies.get("auth_token")?.value) as Option<string>)
     .otherwise(() => None);
 
-  if (token.isNone()) {
-    logs.info("No token found, redirecting to login page");
-    redirectToLoginWithParams(req);
-  }
-
   matchPattern(req.nextUrl.pathname)
     .with("/login", () => {
       logs.info("Login page, continuing to the requested page");
-      NextResponse.next();
+      return NextResponse.next();
     })
     .with("/api/login", () => {
       logs.info("API login page, continuing to the requested page");
@@ -40,18 +35,29 @@ export async function middleware(req: NextRequest) {
     .with("/register", () => {
       logs.info("Register page, continuing to the requested page");
       NextResponse.next();
-    })
-    .otherwise(() => {});
+    });
 
-  match(await checkAccessWithRustBackend(token.unwrap(), req.nextUrl.pathname), {
-    Ok: () => {
-      logs.info("Access granted, continuing to the requested page");
-      NextResponse.next();
-    },
-    Err: () => {
-      logs.info("Access denied, redirecting to login page");
+  match(token, {
+    Some: async (token) => {
+      logs.info("Token found, checking access");
+      match(await checkAccessWithRustBackend(token, req.nextUrl.pathname), {
+        Ok: () => {
+          logs.info("Access granted, continuing to the requested page");
+          NextResponse.next();
+      },
+      Err: () => {
+            logs.info("Access denied, redirecting to login page");
+            redirectToLoginWithParams(req);
+          },
+        });
+      },
+    None: () => {
+      logs.info("No token found, redirecting to login page");
       redirectToLoginWithParams(req);
+    },
   });
+
+
 }
 
 export const config = {
