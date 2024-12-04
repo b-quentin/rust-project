@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { checkAccessWithRustBackend } from "@/models/users/isAuth";
-import { match, None, Some, Option, Err, Ok, Result } from "oxide.ts";
+import { match, None, Some, Option } from "oxide.ts";
+import { match as matchPattern , P } from "ts-pattern";
 
 // Redirect to login page with redirectTo query param
 function redirectToLoginWithParams(req: NextRequest): NextResponse {
@@ -11,34 +12,28 @@ function redirectToLoginWithParams(req: NextRequest): NextResponse {
   return NextResponse.redirect(loginUrl);
 }
 
-function getToken(req: NextRequest): Option<string> {
-  const token = req.cookies.get("auth_token")?.value;
-  if (!token) return None;
-  return Some(token);
-}
-
 // Middleware to handle access control
 export async function middleware(req: NextRequest) {
-  const token = getToken(req);
+  const token: Option<string> = matchPattern(req.cookies.get("auth_token")?.value)
+    .with(P.string, () => Some(req.cookies.get("auth_token")?.value) as Option<string>)
+    .otherwise(() => None);
 
   if (token.isNone()) {
-    return redirectToLoginWithParams(req);
+     redirectToLoginWithParams(req);
   }
 
-  const { pathname } = req.nextUrl;
-  if (pathname === "/login") return NextResponse.next();
+  matchPattern(req.nextUrl.pathname)
+    .with("/login", () => NextResponse.next())
+    .with("/api/login", () => NextResponse.next())
+    .with("/register", () => NextResponse.next())
+    .otherwise(() => {});
 
-  const result = await checkAccessWithRustBackend(token.unwrap(), pathname);
-
-  if (result.isErr()) {
-    console.error("Access check failed:", result.unwrapErr());
-    return redirectToLoginWithParams(req);
-  }
-
-  return NextResponse.next();
+  match(await checkAccessWithRustBackend(token.unwrap(), req.nextUrl.pathname), {
+    Ok: () => NextResponse.next(),
+    Err: () => redirectToLoginWithParams(req),
+  });
 }
 
 export const config = {
   matcher: ["/:path*"],
 };
-
